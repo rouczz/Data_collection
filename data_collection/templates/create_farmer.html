@@ -1,0 +1,131 @@
+{% extends "data_collection/templates/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Form Section -->
+        <div class="col-md-6">
+            <h2 class="mb-3 text-primary">Create a Farmer</h2>
+
+            <form method="post" class="card p-4 shadow">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label class="form-label">Aadhar Number</label>
+                    {{ form.aadhar }}
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">First Name</label>
+                    {{ form.first_name }}
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Last Name</label>
+                    {{ form.last_name }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Mobile Number</label>
+                    {{ form.mobile_number }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Gender</label>
+                    {{ form.gender }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Guardian Name</label>
+                    {{ form.guardian_name }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Village</label>
+                    {{ form.village }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Pincode</label>
+                    {{ form.pincode }}
+                </div>
+
+                <div class="form-check mb-3">
+                    {{ form.farmer_consent }}
+                    <label class="form-check-label">I agree to provide my details</label>
+                </div>
+
+                <!-- Hidden Fields for GeoLocation -->
+                <input type="hidden" name="latitude" id="latitude">
+                <input type="hidden" name="longitude" id="longitude">
+
+                <button type="submit" class="btn btn-success w-100">Submit</button>
+            </form>
+        </div>
+
+        <!-- Map Section -->
+        <div class="col-md-6">
+            <h3 class="mb-3 text-primary">Select Farmer's Location</h3>
+            <div id="map" class="shadow rounded" style="height: 400px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var map = L.map('map').setView([23.6157, 81.9195], 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    var marker;
+
+    // Get User's Location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+
+                // Center map to user's location
+                map.setView([lat, lng], 14);
+
+                // Add marker at user's location
+                marker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup("Your Current Location").openPopup();
+
+                // Store location in form fields
+                document.getElementById("latitude").value = lat;
+                document.getElementById("longitude").value = lng;
+            },
+            function(error) {
+                console.error("Geolocation error: " + error.message);
+            }
+        );
+    } else {
+        alert("Geolocation is not supported by your browser.");
+    }
+
+    // Click to Select New Location
+    map.on('click', function(e) {
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+
+        document.getElementById("latitude").value = lat;
+        document.getElementById("longitude").value = lng;
+
+        if (marker) {
+            map.removeLayer(marker);
+        }
+
+        marker = L.marker([lat, lng]).addTo(map)
+            .bindPopup("Selected Location").openPopup();
+    });
+});
+</script>
+
+{% endblock %}

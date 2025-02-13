@@ -1,0 +1,116 @@
+{% extends "data_collection/templates/base.html" %}
+{% load static %}
+
+{% block content %}
+<h2>Add Farm for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
+
+<!-- Farm Form -->
+<form id="farmForm" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="boundary" id="boundary">
+    <button type="submit">Submit</button>
+</form>
+
+<!-- Map Container -->
+<h3>Draw the Farm Boundary</h3>
+<div id="map" style="height: 400px;"></div>
+
+<!-- Success/Error Message -->
+<div id="message"></div>
+
+<!-- Leaflet & Leaflet Draw JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var map = L.map('map').setView([23.6157, 81.9195], 14); // Increased zoom from 6 to 14
+
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+       // Try to get the user's location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+
+                // Set map view to user's location
+                map.setView([lat, lng], 14);
+
+                // Add marker at user's location
+                marker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup("Your Current Location").openPopup();
+
+                // Store lat/lng in hidden form fields
+                document.getElementById("latitude").value = lat;
+                document.getElementById("longitude").value = lng;
+            },
+            function(error) {
+                console.error("Geolocation error: " + error.message);
+            }
+        );
+    } else {
+        alert("Geolocation is not supported by your browser.");
+    }
+
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: { 
+            polygon: true,
+            polyline: false,
+            rectangle: false,
+            circle: false,
+            marker: false
+        }
+    });
+    map.addControl(drawControl);
+
+    // Handle the drawn polygon
+    map.on(L.Draw.Event.CREATED, function (event) {
+        var layer = event.layer;
+        drawnItems.clearLayers();
+        drawnItems.addLayer(layer);
+        
+        // Convert polygon to GeoJSON format and store in hidden field
+        document.getElementById("boundary").value = JSON.stringify(layer.toGeoJSON().geometry);
+    });
+});
+
+// AJAX Form Submission
+document.getElementById("farmForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    var formData = new FormData(this);
+
+    fetch("{% url 'add_farm' farmer.id %}", {
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        let messageDiv = document.getElementById("message");
+
+        if (data.success) {
+            messageDiv.innerHTML = "<p style='color: green;'>Farm created successfully! Redirecting...</p>";
+            setTimeout(() => {
+                window.location.href = `/add-plantation/${data.farm_id}/`;
+            }, 1500);
+        } else {
+            messageDiv.innerHTML = "<p style='color: red;'>Error: " + JSON.stringify(data.errors) + "</p>";
+        }
+    })
+    .catch(error => console.error("AJAX Error:", error));
+});
+</script>
+
+{% endblock %}
