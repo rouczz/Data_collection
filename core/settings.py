@@ -90,12 +90,24 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.getenv('DATABASE_URL'),
+#         engine='django.contrib.gis.db.backends.postgis'  # Use PostGIS
+#     )
+# }
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        engine='django.contrib.gis.db.backends.postgis'  # Use PostGIS
-    )
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',  # PostGIS
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST', 'db.hwguievdtxdnzihdmahn.supabase.co'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+    }
 }
+
 # DATABASES = {
 #     'default':  dj_database_url.parse("postgresql://postgres:KisanMitra@2025@db.hwguievdtxdnzihdmahn.supabase.co:5432/postgres", conn_max_age=600, ssl_require=True)
 
