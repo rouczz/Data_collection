@@ -78,13 +78,13 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    var map = L.map('map').setView([23.6157, 81.9195], 6);
+    var map = L.map('map').setView([23.6157, 81.9195], 6);  // Default view
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     var marker;
 
-    // Get User's Location
+    // Immediately Ask for User's Location on Load
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
@@ -103,14 +103,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById("longitude").value = lng;
             },
             function(error) {
-                console.error("Geolocation error: " + error.message);
+                console.warn("Geolocation error: " + error.message);
+
+                // Handle location denial
+                if (error.code === error.PERMISSION_DENIED) {
+                    alert("Location access denied. Please enable location services.");
+                }
             }
         );
     } else {
         alert("Geolocation is not supported by your browser.");
     }
 
-    // Click to Select New Location
+    // Allow User to Select a New Location on Click
     map.on('click', function(e) {
         var lat = e.latlng.lat;
         var lng = e.latlng.lng;
@@ -127,5 +132,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 </script>
+
 
 {% endblock %}
