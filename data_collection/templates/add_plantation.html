@@ -1,0 +1,115 @@
+{% extends "data_collection/templates/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Plantation Form -->
+        <div class="col-md-6">
+            <h2 class="mb-3 text-primary">Add Plantation</h2>
+
+            <form id="plantationForm" method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <input type="hidden" name="boundary" id="boundary">
+                <button type="submit" class="btn btn-success w-100">Submit</button>
+            </form>
+        </div>
+
+        <!-- Map Section -->
+        <div class="col-md-6">
+            <h3 class="mb-3 text-primary">Draw Plantation Boundary</h3>
+            <div id="map" class="shadow rounded" style="height: 400px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var map = L.map('map').setView([23.6157, 81.9195], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+     if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+
+                // Set map view to user's location
+                map.setView([lat, lng], 14);
+
+                // Add marker at user's location
+                marker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup("Your Current Location").openPopup();
+
+                // Store lat/lng in hidden form fields
+                document.getElementById("latitude").value = lat;
+                document.getElementById("longitude").value = lng;
+            },
+            function(error) {
+                console.error("Geolocation error: " + error.message);
+            }
+        );
+    } else {
+        alert("Geolocation is not supported by your browser.");
+    }
+    
+
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: { polygon: true }
+    });
+    map.addControl(drawControl);
+
+    // Handle drawn polygon
+    map.on(L.Draw.Event.CREATED, function (event) {
+        var layer = event.layer;
+        drawnItems.clearLayers();
+        drawnItems.addLayer(layer);
+        document.getElementById("boundary").value = JSON.stringify(layer.toGeoJSON().geometry);
+    });
+});
+
+// Form Submission
+document.getElementById("plantationForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    var formData = new FormData(this);
+
+    fetch("{% url 'add_plantation' farm.id %}", {
+        method: "POST",
+        body: formData,
+        headers: {
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        let messageDiv = document.createElement("div");
+        messageDiv.className = "alert alert-success mt-3";
+        if (data.success) {
+            messageDiv.innerHTML = "<p>Plantation added successfully! Redirecting...</p>";
+            document.body.appendChild(messageDiv);
+            setTimeout(() => {
+                window.location.href = `/add-species/${data.plantation_id}/`;
+            }, 2000);
+        } else {
+            messageDiv.innerHTML = "<p class='text-danger'>Error: " + JSON.stringify(data.errors) + "</p>";
+            document.body.appendChild(messageDiv);
+        }
+    })
+    .catch(error => console.error("AJAX Error:", error));
+});
+</script>
+
+{% endblock %}

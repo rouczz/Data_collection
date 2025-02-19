@@ -23,3 +23,22 @@ class FarmForm(forms.ModelForm):
             'ownership': forms.Select(choices=[('OWNED', 'Owned'), ('LEASED', 'Leased')]),
             'boundary_method': forms.Select(choices=[('Drawing', 'Drawing'), ('Tapping', 'Tapping')]),
         }
+
+from django import forms
+from .models import Plantation
+
+class PlantationForm(forms.ModelForm):
+    class Meta:
+        model = Plantation
+        exclude = ["boundary"]  # We will handle boundary using Leaflet map
+        fields = ['kyari_name', 'number_of_saplings', 'area_in_acres', 'plantation_model', 'year', 'kyari_type', 'is_feasible', 'boundary']
+
+
+from django import forms
+from .models import Specie
+
+class SpecieForm(forms.ModelForm):
+    class Meta:
+        model = Specie
+        exclude = ["plantation"] 
+        fields = "__all__"

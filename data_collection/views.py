@@ -1,8 +1,9 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
 from .forms import *
 from django.contrib.gis.geos import Point
 from django.contrib.gis.geos import GEOSGeometry
-from .models import Farmer
+from .models import *
 
 def create_farmer(request):
     if request.method == 'POST':
@@ -34,9 +35,120 @@ def add_farm(request, farmer_id):
             farm.farmer = farmer
             farm.boundary = GEOSGeometry(boundary_geojson) 
             farm.save()
-            return redirect('add_plantation', farm_id=farm.id)  # Redirect to plantation
+            return JsonResponse({'success': True, 'farm_id': farm.id})
 
     else:
         form = FarmForm()
 
     return render(request, 'data_collection/templates/add_farm.html', {'form': form, 'farmer': farmer})
+
+def add_plantation(request, farm_id):
+    farm = get_object_or_404(Farm, id=farm_id)
+
+    if request.method == "POST":
+        form = PlantationForm(request.POST)
+        boundary_geojson = request.POST.get("boundary")
+
+        if form.is_valid() and boundary_geojson:
+            plantation = form.save(commit=False)
+            plantation.farm = farm
+            plantation.boundary = GEOSGeometry(boundary_geojson)  # ✅ Convert GeoJSON to Polygon
+            plantation.save()
+            return JsonResponse({"success": True, "plantation_id": plantation.id})
+
+        return JsonResponse({"success": False, "errors": form.errors}, status=400)
+
+    else:
+        form = PlantationForm()
+
+    return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farm": farm})
+
+
+def add_specie(request, plantation_id):
+    plantation = get_object_or_404(Plantation, id=plantation_id)
+    print(f"Plantation: {plantation}")
+    if request.method == "POST":
+        form = SpecieForm(request.POST)
+        if form.is_valid():
+            specie = form.save(commit=False)
+            specie.plantation = plantation
+            specie.save()
+            return JsonResponse({"success": True, "specie_id": specie.id})
+
+        return JsonResponse({"success": False, "errors": form.errors}, status=400)
+
+    else:
+        form = SpecieForm()
+
+    return render(request, "data_collection/templates/add_specie.html", {"form": form, "plantation": plantation})
+
+def dashboard(request):
+    return render(request, "data_collection/templates/dashboard.html") 
+from django.shortcuts import render
+from django.http import JsonResponse
+from .models import Farmer, Farm, Plantation
+
+from django.shortcuts import render
+from django.http import JsonResponse
+from .models import Farmer, Farm, Plantation
+
+def get_farmers_geojson(request):
+    farmers = Farmer.objects.all()
+    farms = Farm.objects.all()
+    plantations = Plantation.objects.all()
+
+    farmer_data = [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [farmer.geo_tag.x, farmer.geo_tag.y]
+            },
+            "properties": {
+                "id": farmer.id,
+                "name": f"{farmer.first_name} {farmer.last_name}",
+                "mobile": farmer.mobile_number,
+                "village": farmer.village
+            }
+        }
+        for farmer in farmers
+    ]
+
+    farm_data = [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[list(coord) for coord in farm.boundary.coords[0]]]  # ✅ Convert to proper format
+            },
+            "properties": {
+                "id": farm.id,
+                "farm_name": farm.farm_name,
+                "area": farm.area_in_acres,
+                "owner": farm.farmer.first_name + " " + farm.farmer.last_name
+            }
+        }
+        for farm in farms
+    ]
+
+    plantation_data = [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[list(coord) for coord in plantation.boundary.coords[0]]]  # ✅ Convert properly
+            },
+            "properties": {
+                "id": plantation.id,
+                "kyari_name": plantation.kyari_name,
+                "number_of_saplings": plantation.number_of_saplings
+            }
+        }
+        for plantation in plantations
+    ]
+
+    return JsonResponse({
+        "farmers": farmer_data,
+        "farms": farm_data,
+        "plantations": plantation_data
+    })
