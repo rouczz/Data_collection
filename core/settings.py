@@ -84,10 +84,21 @@ import dj_database_url
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default':  dj_database_url.parse("postgresql://postgres:Rounak@2504@db.hwguievdtxdnzihdmahn.supabase.co:5432/postgres", conn_max_age=600, ssl_require=True)
+import os
+from dotenv import load_dotenv
 
+# Load environment variables from .env
+load_dotenv()
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL')
+    )
 }
+# DATABASES = {
+#     'default':  dj_database_url.parse("postgresql://postgres:KisanMitra@2025@db.hwguievdtxdnzihdmahn.supabase.co:5432/postgres", conn_max_age=600, ssl_require=True)
+
+# }
 
 
 DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
