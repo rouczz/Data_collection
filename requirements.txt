@@ -1,4 +1,5 @@
 asgiref==3.8.1
+click==8.1.8
 dj-database-url==2.3.0
 Django==5.1.6
 django-extensions==3.2.3
@@ -12,8 +13,10 @@ djangorestframework-gis==1.1
 GDAL==3.6.2
 greenwich==0.8.0
 gunicorn==23.0.0
+h11==0.14.0
 numpy==2.2.2
 packaging==24.2
 psycopg2-binary==2.9.10
 sqlparse==0.5.3
 typing_extensions==4.12.2
+uvicorn==0.34.0
