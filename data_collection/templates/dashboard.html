@@ -2,57 +2,105 @@
 {% load static %}
 {% block content %}
 
-<h2>Farmer Dashboard</h2>
-<div id="map" style="height: 500px;"></div>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar: Farmer List & Search -->
+        <div class="col-md-3 p-3 bg-light">
+            <h4>Search Farmers</h4>
+            <input type="text" id="search" class="form-control mb-3" placeholder="Search by name..." oninput="fetchFarmers()">
 
-<!-- Leaflet JS -->
+            <h5>Farmer List</h5>
+            <ul id="farmerList" class="list-group"></ul>
+
+            <div id="farmerDetails" class="mt-3"></div>
+        </div>
+
+        <!-- Map Section -->
+        <div class="col-md-9">
+            <h2>Farmer Dashboard</h2>
+            <div id="map" style="height: 500px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet & JavaScript -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     var map = L.map('map').setView([23.6157, 81.9195], 6);
-
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Fetch data from Django API
-    fetch("{% url 'dashboard_data' %}")
-    .then(response => response.json())
-    .then(data => {
-        // Add farmer locations (Points)
-        data.farmers.forEach(farmer => {
-            var marker = L.marker(farmer.geometry.coordinates.reverse()).addTo(map);
-            marker.bindPopup(`
-                <b>Name:</b> ${farmer.properties.name}<br>
-                <b>Village:</b> ${farmer.properties.village}<br>
-                <b>Mobile:</b> ${farmer.properties.mobile}
-            `);
-        });
+    var markersLayer = new L.LayerGroup().addTo(map);
+    var polygonsLayer = new L.LayerGroup().addTo(map);
 
-        // Add farm boundaries (Polygons)
-        data.farms.forEach(farm => {
-            var polygon = L.polygon(farm.geometry.coordinates, {color: 'blue', fillOpacity: 0.3}).addTo(map);
-            polygon.bindPopup(`
-                <b>Farm:</b> ${farm.properties.farm_name}<br>
-                <b>Area:</b> ${farm.properties.area} acres<br>
-                <b>Owner:</b> ${farm.properties.owner}
-            `);
-        });
+    function fetchFarmers(searchQuery = "") {
+        fetch(`/dashboard-farmers/?search=${searchQuery}`)
+        .then(response => response.json())
+        .then(data => {
+            let farmerList = document.getElementById("farmerList");
+            farmerList.innerHTML = "";
 
-        // Add plantation boundaries (Polygons)
-        data.plantations.forEach(plantation => {
-            var polygon = L.polygon(plantation.geometry.coordinates, {color: 'green', fillOpacity: 0.3}).addTo(map);
-            polygon.bindPopup(`
-                <b>Kyari:</b> ${plantation.properties.kyari_name}<br>
-                <b>Saplings:</b> ${plantation.properties.number_of_saplings}
-            `);
+            data.farmers.forEach(farmer => {
+                let listItem = document.createElement("li");
+                listItem.className = "list-group-item farmer-item";
+                listItem.innerHTML = `<b>${farmer.name}</b> <br> ${farmer.village} <br> ${farmer.mobile}`;
+                listItem.onclick = () => loadFarmerOnMap(farmer.id);
+                farmerList.appendChild(listItem);
+            });
         });
-    })
-    .catch(error => console.error("Error fetching data:", error));
+    }
+
+    function loadFarmerOnMap(farmerId) {
+        fetch(`/dashboard-data/${farmerId}/`)
+        .then(response => response.json())
+        .then(data => {
+            markersLayer.clearLayers();
+            polygonsLayer.clearLayers();
+
+            let farmer = data.farmer;
+            let farms = data.farms;
+            let plantations = data.plantations;
+            let species = data.species;
+
+            if (farmer) {
+                let farmerMarker = L.marker(farmer.geo_tag.coordinates.reverse()).addTo(markersLayer);
+                farmerMarker.bindPopup(`
+                    <b>Name:</b> ${farmer.name}<br>
+                    <b>Aadhar:</b> ${farmer.aadhar}<br>
+                    <b>Village:</b> ${farmer.village}<br>
+                    <b>Mobile:</b> ${farmer.mobile}
+                `).openPopup();
+                map.setView(farmer.geo_tag.coordinates, 14);
+            }
+
+            farms.forEach(farm => {
+                let farmPolygon = L.polygon(farm.boundary.coordinates, { color: "blue", fillOpacity: 0.3 }).addTo(polygonsLayer);
+                farmPolygon.bindPopup(`<b>Farm:</b> ${farm.farm_name} <br> <b>Area:</b> ${farm.area} acres`);
+            });
+
+            plantations.forEach(plantation => {
+                let plantationPolygon = L.polygon(plantation.boundary.coordinates, { color: "green", fillOpacity: 0.3 }).addTo(polygonsLayer);
+                plantationPolygon.bindPopup(`<b>Kyari:</b> ${plantation.kyari_name} <br> <b>Saplings:</b> ${plantation.number_of_saplings}`);
+            });
+
+            let farmerDetails = document.getElementById("farmerDetails");
+            farmerDetails.innerHTML = `<h5>Farmer Details</h5>
+                <p><b>Name:</b> ${farmer.name}</p>
+                <p><b>Village:</b> ${farmer.village}</p>
+                <p><b>Mobile:</b> ${farmer.mobile}</p>
+                <h6>Plantation Species:</h6>
+                <ul>${species.map(s => `<li>${s.specie_name} (${s.number_of_plants} plants)</li>`).join("")}</ul>`;
+        });
+    }
+
+    document.getElementById("search").addEventListener("input", function() {
+        fetchFarmers(this.value);
+    });
+
+    fetchFarmers();
 });
 </script>
 
-
 {% endblock %}
-

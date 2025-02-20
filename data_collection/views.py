@@ -84,48 +84,68 @@ def add_specie(request, plantation_id):
 
 def dashboard(request):
     return render(request, "data_collection/templates/dashboard.html") 
-from django.shortcuts import render
-from django.http import JsonResponse
-from .models import Farmer, Farm, Plantation
+
 
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import Farmer, Farm, Plantation
 
-def get_farmers_geojson(request):
+def get_farmers_list(request):
+    search_query = request.GET.get("search", "").strip()  # Get search input
     farmers = Farmer.objects.all()
-    farms = Farm.objects.all()
-    plantations = Plantation.objects.all()
+
+    if search_query:
+        farmers = farmers.filter(first_name__icontains=search_query)  # Case-insensitive search
 
     farmer_data = [
         {
-            "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [farmer.geo_tag.x, farmer.geo_tag.y]
-            },
-            "properties": {
-                "id": farmer.id,
-                "name": f"{farmer.first_name} {farmer.last_name}",
-                "mobile": farmer.mobile_number,
-                "village": farmer.village
-            }
+            "id": farmer.id,
+            "name": f"{farmer.first_name} {farmer.last_name}",
+            "mobile": farmer.mobile_number,
+            "village": farmer.village
         }
         for farmer in farmers
     ]
 
+    return JsonResponse({"farmers": farmer_data})
+
+
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from .models import Farmer, Farm, Plantation, Specie
+
+def get_farmer_details(request, farmer_id):
+    farmer = get_object_or_404(Farmer, id=farmer_id)
+    farms = Farm.objects.filter(farmer=farmer)
+    plantations = Plantation.objects.filter(farm__in=farms)
+    # species = Specie.objects.filter(plantation__in=plantations)
+
+    farmer_data = {
+        "id": farmer.id,
+        "name": f"{farmer.first_name} {farmer.last_name}",
+        "aadhar": farmer.aadhar,
+        "mobile": farmer.mobile_number,
+        "gender": farmer.gender,
+        "guardian": farmer.guardian_name,
+        "village": farmer.village,
+        "pincode": farmer.pincode,
+        "farmer_consent": farmer.farmer_consent,
+        "geo_tag": {
+            "type": "Point",
+            "coordinates": [farmer.geo_tag.x, farmer.geo_tag.y]
+        }
+    }
+
     farm_data = [
         {
-            "type": "Feature",
-            "geometry": {
+            "id": farm.id,
+            "farm_name": farm.farm_name,
+            "area": farm.area_in_acres,
+            "ownership": farm.ownership,
+            "boundary_method": farm.boundary_method,
+            "boundary": {
                 "type": "Polygon",
-                "coordinates": [[list(coord) for coord in farm.boundary.coords[0]]]  # ✅ Convert to proper format
-            },
-            "properties": {
-                "id": farm.id,
-                "farm_name": farm.farm_name,
-                "area": farm.area_in_acres,
-                "owner": farm.farmer.first_name + " " + farm.farmer.last_name
+                "coordinates": [[list(reversed(coord)) for coord in farm.boundary.coords[0]]] 
             }
         }
         for farm in farms
@@ -133,22 +153,35 @@ def get_farmers_geojson(request):
 
     plantation_data = [
         {
-            "type": "Feature",
-            "geometry": {
+            "id": plantation.id,
+            "kyari_name": plantation.kyari_name,
+            "number_of_saplings": plantation.number_of_saplings,
+            "plantation_model": plantation.plantation_model,
+            "kyari_type": plantation.kyari_type,
+            "is_feasible": plantation.is_feasible,
+            "boundary": {
                 "type": "Polygon",
-                "coordinates": [[list(coord) for coord in plantation.boundary.coords[0]]]  # ✅ Convert properly
-            },
-            "properties": {
-                "id": plantation.id,
-                "kyari_name": plantation.kyari_name,
-                "number_of_saplings": plantation.number_of_saplings
+                "coordinates": [[list(reversed(coord)) for coord in plantation.boundary.coords[0]]]
             }
         }
         for plantation in plantations
     ]
 
+    # specie_data = [
+    #     {
+    #         "id": specie.id,
+    #         "plantation_id": specie.plantation.id,
+    #         "specie_name": specie.specie_name,
+    #         "number_of_plants": specie.number_of_plants,
+    #         "plant_spacing": specie.plant_spacing
+    #     }
+    #     for specie in species
+    # ]
+
     return JsonResponse({
-        "farmers": farmer_data,
+        "farmer": farmer_data,
         "farms": farm_data,
-        "plantations": plantation_data
+        "plantations": plantation_data,
+        # "species": specie_data
     })
+
