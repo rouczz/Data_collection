@@ -1,3 +1,5 @@
+
+
 {% extends "data_collection/templates/base.html" %}
 {% load static %}
 
@@ -78,11 +80,73 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    var map = L.map('map').setView([23.6157, 81.9195], 6);  // Default view
+        // Base map layers
+        var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 22  // ✅ Allow max zoom
+        });
+    
+        var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Satellite',
+            maxZoom: 22  // ✅ Higher zoom for better details
+        });
+    
+        var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Terrain',
+            maxZoom: 22
+        });
+    
+        var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Hybrid',
+            maxZoom: 22
+        });
+    
+        var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri World Imagery',
+            maxZoom: 22
+        });
+    
+        // Overlay for Place Names & Boundaries
+        var esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri, HERE, Garmin',
+            maxZoom: 22
+        });
+        var esriClarity = L.tileLayer(
+            'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+            maxZoom: 22  // ✅ Allows deeper zoom levels
+        });       
+    
+        // ✅ Fixed: Correct initialization of map
+        var map = L.map('map', {
+            center: [23.6157, 81.9195], 
+            zoom: 6,
+            maxZoom: 22,  // ✅ Maximum zoom allowed
+            layers: [esri, esriLabels]  // ✅ Now Esri loads correctly
+        });
+    
+        // Layer control to switch between different maps
+        var baseMaps = {
+            "Streets": streets,
+            "Google Satellite": satellite,
+            "Google Terrain": terrain,
+            "Google Hybrid": hybrid,
+            "Esri World Imagery": esri,
+            "Esri Clarity": esriClarity
+        };
+    
+        var overlayMaps = {
+            "Place Names & Boundaries": esriLabels
+        };
+    
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+    
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    var marker;
+   
+    
 
     // Immediately Ask for User's Location on Load
     if (navigator.geolocation) {
@@ -132,6 +196,5 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 </script>
-
 
 {% endblock %}
