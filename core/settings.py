@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-@pb$9gb8n54c^@v(03()_*kvk_75^$_e=-ree8c3n2ygi$y%l6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["data-collection-0o3b.onrender.com",'127.0.0.1']
 

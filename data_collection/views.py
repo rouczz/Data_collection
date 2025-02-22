@@ -133,7 +133,8 @@ def get_farmer_details(request, farmer_id):
     farms = Farm.objects.filter(farmer=farmer)
     plantations = Plantation.objects.filter(farm__in=farms)
     # species = Specie.objects.filter(plantation__in=plantations)
-
+    # ✅ Ensure image URL is absolute (Fixes issue)
+    image_url = request.build_absolute_uri(farmer.consent_form.url) if farmer.consent_form else None  
     farmer_data = {
         "id": farmer.id,
         "name": f"{farmer.first_name} {farmer.last_name}",
@@ -144,6 +145,7 @@ def get_farmer_details(request, farmer_id):
         "village": farmer.village,
         "pincode": farmer.pincode,
         "farmer_consent": farmer.farmer_consent,
+        "image_url":image_url,
         "geo_tag": {
             "type": "Point",
             "coordinates": [farmer.geo_tag.x, farmer.geo_tag.y]

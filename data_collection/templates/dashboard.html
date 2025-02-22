@@ -58,12 +58,13 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(data => {
             markersLayer.clearLayers();
             polygonsLayer.clearLayers();
-
+            console.log("✅ API Response:", data);
+    
             let farmer = data.farmer;
             let farms = data.farms;
             let plantations = data.plantations;
             let species = data.species;
-
+    
             if (farmer) {
                 let farmerMarker = L.marker(farmer.geo_tag.coordinates.reverse()).addTo(markersLayer);
                 farmerMarker.bindPopup(`
@@ -74,26 +75,34 @@ document.addEventListener("DOMContentLoaded", function() {
                 `).openPopup();
                 map.setView(farmer.geo_tag.coordinates, 14);
             }
-
+    
             farms.forEach(farm => {
                 let farmPolygon = L.polygon(farm.boundary.coordinates, { color: "blue", fillOpacity: 0.3 }).addTo(polygonsLayer);
                 farmPolygon.bindPopup(`<b>Farm:</b> ${farm.farm_name} <br> <b>Area:</b> ${farm.area} acres`);
             });
-
+    
             plantations.forEach(plantation => {
                 let plantationPolygon = L.polygon(plantation.boundary.coordinates, { color: "green", fillOpacity: 0.3 }).addTo(polygonsLayer);
                 plantationPolygon.bindPopup(`<b>Kyari:</b> ${plantation.kyari_name} <br> <b>Saplings:</b> ${plantation.number_of_saplings}`);
             });
-
+    
             let farmerDetails = document.getElementById("farmerDetails");
+            // ✅ Check if image exists
+            let imageHtml = farmer.image_url ? 
+            `<img src="${farmer.image_url}" alt="Farmer Image" class="img-fluid rounded mt-2" style="max-width: 200px;">` 
+            : `<p>No Image Available</p>`;
+
+            // ✅ Update farmer details in sidebar
             farmerDetails.innerHTML = `<h5>Farmer Details</h5>
-                <p><b>Name:</b> ${farmer.name}</p>
-                <p><b>Village:</b> ${farmer.village}</p>
-                <p><b>Mobile:</b> ${farmer.mobile}</p>
-                <h6>Plantation Species:</h6>
-                <ul>${species.map(s => `<li>${s.specie_name} (${s.number_of_plants} plants)</li>`).join("")}</ul>`;
+            ${imageHtml}
+            <p><b>Name:</b> ${farmer.name}</p>
+            <p><b>Village:</b> ${farmer.village}</p>
+            <p><b>Mobile:</b> ${farmer.mobile}</p>
+            <h6>Plantation Species:</h6>
+            <ul>${species.map(s => `<li>${s.specie_name} (${s.number_of_plants} plants)</li>`).join("")}</ul>`;
         });
     }
+    
 
     document.getElementById("search").addEventListener("input", function() {
         fetchFarmers(this.value);
