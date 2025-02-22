@@ -154,6 +154,11 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'data_collection/static')]
+# For deployment: collect all static files in one place
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+if not DEBUG:  # Serve static files in production
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
