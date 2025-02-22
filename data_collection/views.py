@@ -7,18 +7,32 @@ from .models import *
 
 def create_farmer(request):
     if request.method == 'POST':
-        form = FarmerForm(request.POST)
+
+        form = FarmerForm(request.POST, request.FILES)  # ✅ Include request.FILES
         lat = request.POST.get('latitude')
         lng = request.POST.get('longitude')
+
         if form.is_valid() and lat and lng:
             farmer = form.save(commit=False)
-            farmer.geo_tag = Point(float(lng), float(lat))  # ✅ Store as GIS Point
-            farmer = form.save()
+            farmer.geo_tag = Point(float(lng), float(lat))
+            
+
+            if 'consent_form' in request.FILES:
+                farmer.consent_form = request.FILES['consent_form']
+                
+            farmer.save()  # ✅ Now save the farmer with the file
+            print("✅ Farmer Saved Successfully with File!")
+
             return redirect('add_farm', farmer_id=farmer.id)  # Redirect to farm creation
+
+        else:
+            print("❌ Form Errors:", form.errors)  
+
     else:
         form = FarmerForm()
 
     return render(request, 'data_collection/templates/create_farmer.html', {'form': form})
+
 
 
 def add_farm(request, farmer_id):

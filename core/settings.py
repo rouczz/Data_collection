@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-@pb$9gb8n54c^@v(03()_*kvk_75^$_e=-ree8c3n2ygi$y%l6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["data-collection-0o3b.onrender.com","127.0.0.1"]
+ALLOWED_HOSTS = ["data-collection-0o3b.onrender.com"]
 
 
 # Application definition
@@ -159,6 +159,10 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 if not DEBUG:  # Serve static files in production
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

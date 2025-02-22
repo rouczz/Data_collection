@@ -10,8 +10,8 @@
         <div class="col-md-6">
             <h2 class="mb-3 text-primary">Create a Farmer</h2>
 
-            <form method="post" class="card p-4 shadow">
-                {% csrf_token %}
+            <form method="post" enctype="multipart/form-data" class="card p-4 shadow">  <!-- ✅ Add enctype -->
+                {% csrf_token %}            
                 
                 <div class="mb-3">
                     <label class="form-label">Aadhar Number</label>
@@ -52,6 +52,12 @@
                     <label class="form-label">Pincode</label>
                     {{ form.pincode }}
                 </div>
+
+                <div class="mb-3">
+                    <label for="consent_form">Upload Consent Form:</label>
+                    {{ form.consent_form }}
+                </div>
+                
 
                 <div class="form-check mb-3">
                     {{ form.farmer_consent }}

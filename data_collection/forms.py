@@ -4,13 +4,13 @@ from .models import Farmer
 class FarmerForm(forms.ModelForm):
     class Meta:
         model = Farmer
-        exclude = ['geo_tag']
-        fields = ['aadhar', 'first_name', 'last_name', 'mobile_number', 'gender', 'guardian_name', 'geo_tag', 'village', 'pincode', 'farmer_consent']
+        fields = ['aadhar', 'first_name', 'last_name', 'mobile_number', 'gender', 
+                  'guardian_name', 'village', 'pincode', 'farmer_consent', 'consent_form']  # ✅ Removed `geo_tag`
         widgets = {
             'gender': forms.Select(choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')]),
             'farmer_consent': forms.CheckboxInput(),
+            "consent_form": forms.ClearableFileInput(attrs={"accept": "application/pdf,image/*"}),  # ✅ File input is fine
         }
-
 
 from .models import Farm
 

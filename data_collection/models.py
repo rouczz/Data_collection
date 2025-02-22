@@ -14,6 +14,8 @@ class Farmer(models.Model):
     village = models.CharField(max_length=100)
     pincode = models.CharField(max_length=10)
     metadata = models.JSONField(default=dict, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    consent_form = models.FileField(upload_to="consent_forms/", null=True, blank=True)  # ✅ New file field
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"  
