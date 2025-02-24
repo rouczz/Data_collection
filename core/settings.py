@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 ]
 
 EXTERNAL_APPS = [
+    'django_extensions',
     'rest_framework',
     'django.contrib.gis',
     'data_collection',
