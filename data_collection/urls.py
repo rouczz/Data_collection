@@ -2,15 +2,23 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import *
+from .postapi import *
 
 urlpatterns = [
     path('', create_farmer, name='create_farmer'),
     path('add_farm/<int:farmer_id>/', add_farm, name='add_farm'),
-    path('add-plantation/<int:farm_id>/', add_plantation, name='add_plantation'),
-    path('add-species/<int:plantation_id>/', add_specie, name='add_specie'),
+    path("api/farms/<int:farmer_id>/", get_farms_for_farmer, name="get_farms"),
+    path('add-plantation/<int:farmer_id>/', add_plantation, name='add_plantation'),
+    path('add-species/<int:farmer_id>/', add_specie, name='add_specie'),
     path("dashboard-data/<int:farmer_id>/", get_farmer_details, name="dashboard_data"),
     path("dashboard-farmers/", get_farmers_list, name="dashboard_farmers"),
     path('dashboard/', dashboard, name='dashboard'),
+    path('get-plantations/<int:farm_id>/', get_plantations_for_farm, name='get_plantations_for_farm'),
+
+
+
+    #POST API 
+    path('send-farmer/<int:farmer_id>/', send_farmer_data, name='send_farmer_data'),
 ]
 # Compare this snippet from KMcollect/data_collection/views.py: 
 

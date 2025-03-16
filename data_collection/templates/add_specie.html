@@ -6,12 +6,29 @@
     <div class="row">
         <div class="col-md-8 offset-md-2">
             <h2 class="mb-3 text-primary">Add Species to Plantation</h2>
+            <div id="message"></div>
 
             <form id="specieForm" method="post">
                 {% csrf_token %}
+                
+                <!-- Added Plantation Dropdown -->
                 <div class="mb-3">
-                    <label class="form-label">Specie ID</label>
-                    {{ form.specie_id }}
+                    <label for="plantationSelect" class="form-label">Select Plantation</label>
+                    <select id="plantationSelect" name="plantation_id" class="form-control" required>
+                        <option value="">-- Select Plantation --</option>
+                        {% for plantation in plantations %}
+                            <option value="{{ plantation.id }}" {% if plantation.has_species %}disabled{% endif %}>
+                                {{ plantation.kyari_name }} (Farm: {{ plantation.farm.farm_name }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specieSelect" class="form-label">Select Specie</label>
+                    <select id="specieSelect" name="specie_id" class="form-control" required>
+                        <option value="">-- Select Specie --</option>
+                    </select>
                 </div>
 
                 <div class="mb-3">
@@ -55,33 +72,113 @@
 
 <!-- AJAX Form Submission -->
 <script>
-document.getElementById("specieForm").addEventListener("submit", function(event) {
-    event.preventDefault();
+    document.getElementById("specieForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+    
+        var formData = new FormData(this);
+        var farmerId = {{ farmer.id }};  // Get the farmer ID from context
+    
+        fetch(`/add-species/${farmerId}/`, {  // Updated URL to use farmer_id
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            let messageDiv = document.getElementById("message");
+            messageDiv.innerHTML = ""; // Clear previous messages
+    
+            if (data.success) {
+                messageDiv.innerHTML = `
+                    <div class="alert alert-success mt-3">
+                        <p>✅ Species added successfully!</p>
+                        <button id="addAnotherSpeciesBtn" class="btn btn-primary mt-2">➕ Add Another Species</button>
+                        <button id="viewSpeciesBtn" class="btn btn-info mt-2">👁️ View All Species</button>
+                        <button id="createNewFarmerBtn" class="btn btn-success mt-2">👨‍🌾 Create New Farmer</button>
+                    </div>
+                `;
+    
+                // Hide form after submission
+                document.getElementById("specieForm").style.display = "none";
+    
+                // Add event listeners to buttons
+                document.getElementById("addAnotherSpeciesBtn").addEventListener("click", addAnotherSpecies);
+                document.getElementById("viewSpeciesBtn").addEventListener("click", function() {
+                    window.location.href = `/view-species/${farmerId}/`;  // Added view all species button
+                });
+                document.getElementById("createNewFarmerBtn").addEventListener("click", function() {
+                    window.location.href = location.origin + "/";  // Works dynamically
+                });
+            } else {
+                let errorHtml = '<div class="alert alert-danger mt-3">';
+                if (typeof data.errors === 'object') {
+                    errorHtml += '<ul>';
+                    for (const [field, errors] of Object.entries(data.errors)) {
+                        errorHtml += `<li>${field}: ${errors.join(', ')}</li>`;
+                    }
+                    errorHtml += '</ul>';
+                } else {
+                    errorHtml += `<p>${JSON.stringify(data.errors)}</p>`;
+                }
+                errorHtml += '</div>';
+                messageDiv.innerHTML = errorHtml;
+            }
+        })
+        .catch(error => {
+            console.error("AJAX Error:", error);
+            document.getElementById("message").innerHTML = `
+                <div class="alert alert-danger mt-3">
+                    <p>❌ An error occurred. Please try again.</p>
+                </div>
+            `;
+        });
+    });
 
-    var formData = new FormData(this);
-
-    fetch("{% url 'add_specie' plantation.id %}", {
-        method: "POST",
-        body: formData,
-        headers: {
-            "X-Requested-With": "XMLHttpRequest"
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        let messageDiv = document.getElementById("message");
-
-        if (data.success) {
-            messageDiv.innerHTML = "<p style='color: green;'>Species added successfully! Redirecting...</p>";
-            setTimeout(() => {
-                window.location.href = `/view-plantation/${data.specie_id}/`;
-            }, 1500);
-        } else {
-            messageDiv.innerHTML = "<p style='color: red;'>Error: " + JSON.stringify(data.errors) + "</p>";
-        }
-    })
-    .catch(error => console.error("AJAX Error:", error));
-});
+    
+    // Function to reset form and allow adding another species
+    function addAnotherSpecies() {
+        document.getElementById("specieForm").reset();  // Reset form
+        document.getElementById("message").innerHTML = "";  // Clear success message
+        document.getElementById("specieForm").style.display = "block";  // Show form again
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+        fetch("https://backend.varahaag.com/core/api/plantation/species/all/")
+            .then(response => response.json())
+            .then(data => {
+                const specieSelect = document.getElementById("specieSelect");
+                const specieImagePreview = document.getElementById("specieImagePreview");
+    
+                data.forEach(specie => {
+                    const option = document.createElement("option");
+                    option.value = specie.id;
+                    option.textContent = specie.display_name;
+                    specieSelect.appendChild(option);
+    
+                    // Store the image URL as a data attribute
+                    option.dataset.imageUrl = specie.image_url;
+                });
+    
+                // Update image preview when a species is selected
+                specieSelect.addEventListener("change", function () {
+                    const selectedOption = specieSelect.options[specieSelect.selectedIndex];
+                    const imageUrl = selectedOption.dataset.imageUrl;
+    
+                    if (imageUrl) {
+                        specieImagePreview.src = imageUrl;
+                        specieImagePreview.style.display = "block";
+                    } else {
+                        specieImagePreview.src = "";
+                        specieImagePreview.style.display = "none";
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching species data:", error);
+                alert("Failed to load species data. Please try again later.");
+            });
+    });
 </script>
 
 {% endblock %}

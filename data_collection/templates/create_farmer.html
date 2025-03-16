@@ -59,10 +59,10 @@
                 </div>
                 
 
-                <div class="form-check mb-3">
+                {% comment %} <div class="form-check mb-3">
                     {{ form.farmer_consent }}
                     <label class="form-check-label">I agree to provide my details</label>
-                </div>
+                </div> {% endcomment %}
 
                 <!-- Hidden Fields for GeoLocation -->
                 <input type="hidden" name="latitude" id="latitude">
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", function() {
             center: [23.6157, 81.9195], 
             zoom: 6,
             maxZoom: 22,  // ✅ Maximum zoom allowed
-            layers: [esri, esriLabels]  // ✅ Now Esri loads correctly
+            layers: hybrid  
         });
     
         // Layer control to switch between different maps

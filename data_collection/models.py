@@ -10,7 +10,7 @@ class Farmer(models.Model):
     gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
     guardian_name = models.CharField(max_length=100, blank=True)
     geo_tag = models.PointField()
-    farmer_consent = models.BooleanField(default=False)
+    farmer_consent = models.BooleanField(default=True)
     village = models.CharField(max_length=100)
     pincode = models.CharField(max_length=10)
     metadata = models.JSONField(default=dict, blank=True, null=True)

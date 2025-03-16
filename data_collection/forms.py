@@ -1,6 +1,6 @@
 from django import forms
 from .models import Farmer
-
+import re
 class FarmerForm(forms.ModelForm):
     class Meta:
         model = Farmer
@@ -8,9 +8,27 @@ class FarmerForm(forms.ModelForm):
                   'guardian_name', 'village', 'pincode', 'farmer_consent', 'consent_form']  # ✅ Removed `geo_tag`
         widgets = {
             'gender': forms.Select(choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')]),
-            'farmer_consent': forms.CheckboxInput(),
+            # 'farmer_consent': forms.CheckboxInput(),
             "consent_form": forms.ClearableFileInput(attrs={"accept": "application/pdf,image/*"}),  # ✅ File input is fine
         }
+
+    def clean_aadhar(self):
+        aadhar = self.cleaned_data.get("aadhar")
+        if not re.fullmatch(r"\d{12}", aadhar):  # ✅ Ensures exactly 12 digits
+            raise forms.ValidationError("Aadhaar number must be a 12-digit integer.")
+        return aadhar
+
+    def clean_mobile_number(self):
+        mobile_number = self.cleaned_data.get("mobile_number")
+        if not re.fullmatch(r"\d{10}", mobile_number):  # ✅ Ensures exactly 10 digits
+            raise forms.ValidationError("Mobile number must be a 10-digit integer.")
+        return mobile_number
+
+    def clean_pincode(self):
+        pincode = self.cleaned_data.get("pincode")
+        if not re.fullmatch(r"\d{6}", pincode):  # ✅ Ensures exactly 6 digits
+            raise forms.ValidationError("Pincode must be a 6-digit integer.")
+        return pincode
 
 from .models import Farm
 

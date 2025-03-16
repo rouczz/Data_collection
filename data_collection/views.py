@@ -36,65 +36,128 @@ def create_farmer(request):
 
 
 def add_farm(request, farmer_id):
-    farmer = Farmer.objects.get(id=farmer_id)
+    farmer = get_object_or_404(Farmer, id=farmer_id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = FarmForm(request.POST)
         boundary_geojson = request.POST.get('boundary')
-        
         if form.is_valid():
             farm = form.save(commit=False)
-            farm.farmer = farmer
-            farm = form.save(commit=False)
-            farm.farmer = farmer
+            farm.farmer = farmer  # ✅ Link farm to the farmer
             farm.boundary = GEOSGeometry(boundary_geojson) 
             farm.save()
-            return JsonResponse({'success': True, 'farm_id': farm.id})
+            return JsonResponse({"success": True, "farm_id": farm.id, "farmer_id": farmer.id})  # ✅ Send farmer_id
+        else:
+            return JsonResponse({"success": False, "errors": form.errors})
 
-    else:
-        form = FarmForm()
+    return render(request, "data_collection/templates/add_farm.html", {"form": FarmForm(), "farmer": farmer})
 
-    return render(request, 'data_collection/templates/add_farm.html', {'form': form, 'farmer': farmer})
 
-def add_plantation(request, farm_id):
-    farm = get_object_or_404(Farm, id=farm_id)
+# def add_plantation(request, farm_id):
+#     farm = get_object_or_404(Farm, id=farm_id)
 
+#     if request.method == "POST":
+#         form = PlantationForm(request.POST)
+#         boundary_geojson = request.POST.get("boundary")
+
+#         if form.is_valid() and boundary_geojson:
+#             plantation = form.save(commit=False)
+#             plantation.farm = farm
+#             plantation.boundary = GEOSGeometry(boundary_geojson)  # ✅ Convert GeoJSON to Polygon
+#             plantation.save()
+#             return JsonResponse({"success": True, "plantation_id": plantation.id})
+
+#         return JsonResponse({"success": False, "errors": form.errors}, status=400)
+
+#     else:
+#         form = PlantationForm()
+
+#     return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farm": farm})
+def add_plantation(request, farmer_id):
+    farmer = get_object_or_404(Farmer, id=farmer_id)
+    farms = Farm.objects.filter(farmer=farmer)
+    
     if request.method == "POST":
+        print("DEBUG: Request POST Data:", request.POST)
         form = PlantationForm(request.POST)
+        farm_id = request.POST.get("farm_id")
         boundary_geojson = request.POST.get("boundary")
-
+        
         if form.is_valid() and boundary_geojson:
             plantation = form.save(commit=False)
-            plantation.farm = farm
-            plantation.boundary = GEOSGeometry(boundary_geojson)  # ✅ Convert GeoJSON to Polygon
-            plantation.save()
-            return JsonResponse({"success": True, "plantation_id": plantation.id})
-
-        return JsonResponse({"success": False, "errors": form.errors}, status=400)
-
+            plantation.farmer = farmer
+            plantation.farm = get_object_or_404(Farm, id=farm_id)
+            
+            # Parse the GeoJSON string to extract just the geometry portion
+            try:
+                import json
+                geojson_obj = json.loads(boundary_geojson)
+                
+                # Extract just the geometry part if it's a Feature
+                if geojson_obj.get('type') == 'Feature':
+                    geometry_json = json.dumps(geojson_obj['geometry'])
+                else:
+                    geometry_json = boundary_geojson
+                
+                # Convert to GEOSGeometry
+                plantation.boundary = GEOSGeometry(geometry_json)
+                plantation.save()
+                return JsonResponse({"success": True, "plantation_id": plantation.id})
+            except Exception as e:
+                print(f"ERROR parsing GeoJSON: {str(e)}")
+                return JsonResponse({"success": False, "errors": f"Invalid boundary format: {str(e)}"})
+        else:
+            errors = form.errors
+            return JsonResponse({"success": False, "errors": dict(errors)})
     else:
         form = PlantationForm()
+    
+    return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farms": farms, "farmer": farmer})
 
-    return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farm": farm})
 
+from django.db.models import Q
+from django.db.models import Count
 
-def add_specie(request, plantation_id):
-    plantation = get_object_or_404(Plantation, id=plantation_id)
-    print(f"Plantation: {plantation}")
+from django.db.models import Exists, OuterRef
+
+from django.db.models import Count
+
+def add_specie(request, farmer_id):
+    farmer = get_object_or_404(Farmer, id=farmer_id)
+
+    # Annotate the count of related species and filter plantations without species
+    plantations = Plantation.objects.filter(
+        farm__farmer=farmer
+    ).annotate(
+        species_count=Count('species')  # Count related species using the related_name 'species'
+    ).filter(species_count=0)  # Only include plantations without species
+
     if request.method == "POST":
         form = SpecieForm(request.POST)
-        if form.is_valid():
+        plantation_id = request.POST.get("plantation_id")
+
+        if form.is_valid() and plantation_id:
+            plantation = get_object_or_404(Plantation, id=plantation_id)
+
+            # Save the new species
             specie = form.save(commit=False)
             specie.plantation = plantation
             specie.save()
             return JsonResponse({"success": True, "specie_id": specie.id})
-
-        return JsonResponse({"success": False, "errors": form.errors}, status=400)
+        else:
+            errors = form.errors
+            if not plantation_id:
+                errors['plantation_id'] = ['Please select a plantation']
+            return JsonResponse({"success": False, "errors": errors}, status=400)
 
     else:
         form = SpecieForm()
 
-    return render(request, "data_collection/templates/add_specie.html", {"form": form, "plantation": plantation})
+    return render(
+        request,
+        "data_collection/templates/add_specie.html",
+        {"form": form, "plantations": plantations, "farmer": farmer, "farmer_id":farmer_id},
+    )
 
 def dashboard(request):
     return render(request, "data_collection/templates/dashboard.html") 
@@ -199,5 +262,51 @@ def get_farmer_details(request, farmer_id):
         "farms": farm_data,
         "plantations": plantation_data,
         # "species": specie_data
+    })
+
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.contrib.gis.geos import GEOSGeometry
+from .models import Farmer, Farm
+
+def get_farms_for_farmer(request, farmer_id):
+    """Return a list of farms for the given farmer with valid GeoJSON boundary."""
+    farmer = get_object_or_404(Farmer, id=farmer_id)
+    farms = Farm.objects.filter(farmer=farmer)
+
+    farm_data = [
+        {
+            "id": farm.id,
+            "farm_name": farm.farm_name,
+            "boundary": GEOSGeometry(farm.boundary).geojson  # ✅ Convert to GeoJSON format
+        }
+        for farm in farms
+    ]
+
+    return JsonResponse({"farms": farm_data})
+
+def get_plantations_for_farm(request, farm_id):
+    """Return all plantations for the given farm with their GeoJSON boundaries."""
+    farm = get_object_or_404(Farm, id=farm_id)
+    plantations = Plantation.objects.filter(farm=farm)
+    
+    plantation_data = [
+        {
+            "id": plantation.id,
+            "kyari_name": plantation.kyari_name,
+            "area_in_acres": plantation.area_in_acres,
+            "year": plantation.year,
+            "kyari_type": plantation.kyari_type,
+            "boundary": GEOSGeometry(plantation.boundary).geojson  # Convert to GeoJSON format
+        }
+        for plantation in plantations
+    ]
+    
+    # Also return the farm boundary for validation
+    farm_boundary = GEOSGeometry(farm.boundary).geojson
+    
+    return JsonResponse({
+        "plantations": plantation_data,
+        "farm_boundary": farm_boundary
     })
 

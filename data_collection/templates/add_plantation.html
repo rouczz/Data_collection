@@ -8,9 +8,24 @@
         <div class="col-md-6">
             <h2 class="mb-3 text-primary">Add Plantation</h2>
 
+            <!-- Success/Error Message Placeholder -->
+            <div id="message"></div>
+
+            <!-- Plantation Form -->
             <form id="plantationForm" method="post">
                 {% csrf_token %}
+
+                <!-- Farm Selection Dropdown -->
+                <label for="farmSelect">Select Farm:</label>
+                <select id="farmSelect" name="farm_id" class="form-control">
+                    <option value="">-- Select Farm --</option>
+                    {% for farm in farms %}
+                        <option value="{{ farm.id }}" data-boundary="{{ farm.boundary.geojson }}">{{ farm.farm_name }}</option>
+                    {% endfor %}
+                </select>
+
                 {{ form.as_p }}
+                
                 <input type="hidden" name="boundary" id="boundary">
                 <button type="submit" class="btn btn-success w-100">Submit</button>
             </form>
@@ -24,154 +39,347 @@
     </div>
 </div>
 
-<!-- Leaflet JS -->
+<!-- Leaflet & Turf.js -->
+ <!-- Add this before your script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-       // Base map layers
-       var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 22  // ✅ Allow max zoom
-    });
 
-    var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Satellite',
-        maxZoom: 22  // ✅ Higher zoom for better details
-    });
-
-    var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Terrain',
-        maxZoom: 22
-    });
-
-    var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Hybrid',
-        maxZoom: 22
-    });
-
-    var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri World Imagery',
-        maxZoom: 22
-    });
-
-    // Overlay for Place Names & Boundaries
-    var esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri, HERE, Garmin',
-        maxZoom: 22
-    });
-    var esriClarity = L.tileLayer(
-        'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-        maxZoom: 22  // ✅ Allows deeper zoom levels
-    });       
-
-    // ✅ Fixed: Correct initialization of map
-    var map = L.map('map', {
-        center: [23.6157, 81.9195], 
-        zoom: 6,
-        maxZoom: 22,  // ✅ Maximum zoom allowed
-        layers: [esri, esriLabels]  // ✅ Now Esri loads correctly
-    });
-
-    // Layer control to switch between different maps
-    var baseMaps = {
-        "Streets": streets,
-        "Google Satellite": satellite,
-        "Google Terrain": terrain,
-        "Google Hybrid": hybrid,
-        "Esri World Imagery": esri,
-        "Esri Clarity": esriClarity
-    };
-
-    var overlayMaps = {
-        "Place Names & Boundaries": esriLabels
-    };
-
-    L.control.layers(baseMaps, overlayMaps).addTo(map);
-
-
-
-     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                var lat = position.coords.latitude;
-                var lng = position.coords.longitude;
-
-                // Set map view to user's location
-                map.setView([lat, lng], 14);
-
-                // Add marker at user's location
-                marker = L.marker([lat, lng]).addTo(map)
-                    .bindPopup("Your Current Location").openPopup();
-
-                // Store lat/lng in hidden form fields
-                document.getElementById("latitude").value = lat;
-                document.getElementById("longitude").value = lng;
-            },
-            function(error) {
-                console.error("Geolocation error: " + error.message);
-            }
-        );
-    } else {
-        alert("Geolocation is not supported by your browser.");
-    }
+    document.addEventListener("DOMContentLoaded", function() {
+        let farmBoundaryLayer;
+        let drawnItems = new L.FeatureGroup();
+        let plantationBoundaries = new L.FeatureGroup();
+        
+        // Define Multiple Map Layers
+        var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' });
+        var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Satellite' });
+        var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Terrain' });
+        var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Hybrid' });
+        var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '&copy; Esri World Imagery' });
     
-
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    var drawControl = new L.Control.Draw({
-        edit: { featureGroup: drawnItems },
-        draw: { polygon: true }
-    });
-    map.addControl(drawControl);
-
-    // Handle drawn polygon
-    map.on(L.Draw.Event.CREATED, function (event) {
-        var layer = event.layer;
-        drawnItems.clearLayers();
-        drawnItems.addLayer(layer);
-        document.getElementById("boundary").value = JSON.stringify(layer.toGeoJSON().geometry);
-    });
-});
-
-// Form Submission
-document.getElementById("plantationForm").addEventListener("submit", function(event) {
-    event.preventDefault();
-
-    var formData = new FormData(this);
-
-    fetch("{% url 'add_plantation' farm.id %}", {
-        method: "POST",
-        body: formData,
-        headers: {
-            "X-Requested-With": "XMLHttpRequest"
+        // Initialize Map
+        let map = L.map("map", {
+            center: [23.6157, 81.9195],
+            zoom: 6,
+            maxZoom: 22,
+            layers: [hybrid] // Default layer
+        });
+    
+        // Add Layer Switcher
+        var baseMaps = {
+            "Streets": streets,
+            "Google Satellite": satellite,
+            "Google Terrain": terrain,
+            "Google Hybrid": hybrid,
+            "Esri World Imagery": esri
+        };
+        
+        var overlayMaps = {
+            "Drawn Items": drawnItems,
+            "Existing Plantations": plantationBoundaries
+        };
+        
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+    
+        // Add FeatureGroups to map
+        map.addLayer(drawnItems);
+        map.addLayer(plantationBoundaries);
+    
+        // Handle Farm Selection & Load Boundaries
+        document.getElementById("farmSelect").addEventListener("change", function () {
+            let selectedOption = this.options[this.selectedIndex];
+            let farmId = this.value;
+            let boundaryGeoJSON = selectedOption.getAttribute("data-boundary");
+    
+            if (boundaryGeoJSON) {
+                let boundary = JSON.parse(boundaryGeoJSON);
+    
+                // Remove previous farm boundary
+                if (farmBoundaryLayer) map.removeLayer(farmBoundaryLayer);
+    
+                // Draw new farm boundary
+                farmBoundaryLayer = L.geoJSON(boundary, { color: "blue", fillOpacity: 0.3 }).addTo(map);
+                map.fitBounds(farmBoundaryLayer.getBounds());
+    
+                // Clear previously drawn items
+                drawnItems.clearLayers();
+                
+                // Load existing plantations for this farm
+                loadPlantationsForFarm(farmId);
+    
+                // Setup drawing tools with validation
+                setupDrawingTools(boundary);
+            }
+        });
+        
+        // Load existing plantations for a farm
+        function loadPlantationsForFarm(farmId) {
+            // Clear existing plantation boundaries
+            plantationBoundaries.clearLayers();
+            
+            if (!farmId) return;
+            
+            fetch(`/get-plantations/${farmId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Add each plantation boundary to the map
+                    data.plantations.forEach(plantation => {
+                        let boundary = JSON.parse(plantation.boundary);
+                        let layer = L.geoJSON(boundary, {
+                            color: "green",
+                            fillOpacity: 0.2,
+                            weight: 2
+                        });
+                        
+                        // Add a popup with plantation info
+                        layer.bindPopup(`
+                            <strong>${plantation.kyari_name}</strong><br>
+                            Area: ${plantation.area_in_acres} acres<br>
+                            Year: ${plantation.year}<br>
+                            Type: ${plantation.kyari_type}
+                        `);
+                        
+                        plantationBoundaries.addLayer(layer);
+                    });
+                })
+                .catch(error => console.error("Error loading plantations:", error));
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        let messageDiv = document.createElement("div");
-        messageDiv.className = "alert alert-success mt-3";
-        if (data.success) {
-            messageDiv.innerHTML = "<p>Plantation added successfully! Redirecting...</p>";
-            document.body.appendChild(messageDiv);
-            setTimeout(() => {
-                window.location.href = `/add-species/${data.plantation_id}/`;
-            }, 2000);
-        } else {
-            messageDiv.innerHTML = "<p class='text-danger'>Error: " + JSON.stringify(data.errors) + "</p>";
-            document.body.appendChild(messageDiv);
+    
+        // Enable Drawing Only Inside Selected Farm
+        function setupDrawingTools(farmBoundary) {
+            // Remove existing draw control if it exists
+            if (map.drawControl) {
+                map.removeControl(map.drawControl);
+            }
+    
+            // Create a new Draw Control with improved options for polygon closing
+            let drawControl = new L.Control.Draw({
+                edit: { 
+                    featureGroup: drawnItems 
+                },
+                draw: {
+                    polygon: {
+                        allowIntersection: false,
+                        showArea: true,
+                        drawError: {
+                            color: '#e1e100',
+                            message: '<strong>Error:</strong> Polygon edges cannot cross!'
+                        },
+                        shapeOptions: {
+                            color: '#f357a1',
+                            weight: 3
+                        },
+                        // Lower the tolerance to make it easier to complete polygons
+                        touchRadius: 4,
+                        guideLayers: []
+                    },
+                    marker: false,
+                    polyline: false,
+                    rectangle: {
+                        shapeOptions: {
+                            color: '#f357a1',
+                            weight: 3
+                        }
+                    },
+                    circle: false,
+                    circlemarker: false
+                }
+            });
+    
+            // Add the new Draw Control to the map
+            map.addControl(drawControl);
+            map.drawControl = drawControl;
+    
+            // Clean up any leftover event handlers
+            map.off(L.Draw.Event.CREATED);
+            map.off(L.Draw.Event.EDITED);
+            
+            // Handle polygon creation event with improved validation
+            map.on(L.Draw.Event.CREATED, function (event) {
+                let layer = event.layer;
+                let drawnPolygon = layer.toGeoJSON();
+                
+                console.log("Farm boundary:", farmBoundary);
+                console.log("Drawn polygon:", drawnPolygon);
+    
+                // Fix for validation issues - use a more reliable approach
+                try {
+                    // First, make sure we normalize the GeoJSON format if needed
+                    if (farmBoundary.type === "Feature" && farmBoundary.geometry) {
+                        farmBoundary = farmBoundary.geometry;
+                    }
+                    
+                    // Ensure we're working with the right coordinate structure
+                    let farmCoords = farmBoundary.coordinates || farmBoundary.geometry.coordinates;
+                    let drawnCoords = drawnPolygon.geometry.coordinates;
+                    
+                    // Create proper turf polygons
+                    let farmPolygon = turf.polygon(farmCoords);
+                    let drawnPolygonGeom = turf.polygon(drawnCoords);
+                    
+                    // Check if drawn polygon is fully within farm boundary
+                    // Use a different turf function if booleanWithin is problematic
+                    let isWithin = turf.booleanContains(farmPolygon, drawnPolygonGeom);
+                    
+                    if (!isWithin) {
+                        alert("⚠️ The plantation boundary must be fully inside the farm boundary!");
+                        return;
+                    }
+                    
+                    // Calculate area in acres
+                    let area = calculateAreaInAcres(drawnPolygon);
+                    document.getElementById("id_area_in_acres").value = area.toFixed(2);
+        
+                    // Add the valid polygon to the map
+                    drawnItems.clearLayers(); // Clear previous drawings
+                    drawnItems.addLayer(layer);
+        
+                    // Store the valid polygon in the hidden input field
+                    document.getElementById("boundary").value = JSON.stringify(drawnPolygon);
+                    
+                    console.log("Validation passed! Polygon is within farm boundary.");
+                } catch (error) {
+                    console.error("Validation error:", error);
+                    alert("⚠️ Error validating boundary. Please try again or check console for details.");
+                }
+            });
+            
+            // Handle polygon creation event with improved validation
+            map.on(L.Draw.Event.CREATED, function (event) {
+                let layer = event.layer;
+                let drawnPolygon = layer.toGeoJSON();
+                
+                console.log("Farm boundary:", farmBoundary);
+                console.log("Drawn polygon:", drawnPolygon);
+
+                // Fix for validation issues - use a more reliable approach
+                try {
+                    // First, make sure we normalize the GeoJSON format if needed
+                    if (farmBoundary.type === "Feature" && farmBoundary.geometry) {
+                        farmBoundary = farmBoundary.geometry;
+                    }
+                    
+                    // Ensure we're working with the right coordinate structure
+                    let farmCoords = farmBoundary.coordinates || farmBoundary.geometry.coordinates;
+                    let drawnCoords = drawnPolygon.geometry.coordinates;
+                    
+                    // Create proper turf polygons
+                    let farmPolygon = turf.polygon(farmCoords);
+                    let drawnPolygonGeom = turf.polygon(drawnCoords);
+                    
+                    // Check if drawn polygon is fully within farm boundary
+                    let isWithin = turf.booleanContains(farmPolygon, drawnPolygonGeom);
+                    
+                    if (!isWithin) {
+                        alert("⚠️ The plantation boundary must be fully inside the farm boundary!");
+                        return;
+                    }
+                    
+                    // Calculate area in acres
+                    let area = calculateAreaInAcres(drawnPolygon);
+                    document.getElementById("id_area_in_acres").value = area.toFixed(2);
+
+                    // Add the valid polygon to the map
+                    drawnItems.clearLayers(); // Clear previous drawings
+                    drawnItems.addLayer(layer);
+
+                    // Store the valid polygon in the hidden input field
+                    // Just store the geometry part to make it easier for Django
+                    document.getElementById("boundary").value = JSON.stringify(drawnPolygon.geometry);
+                    
+                    console.log("Validation passed! Polygon is within farm boundary.");
+                } catch (error) {
+                    console.error("Validation error:", error);
+                    alert("⚠️ Error validating boundary. Please try again or check console for details.");
+                }
+            });
         }
-    })
-    .catch(error => console.error("AJAX Error:", error));
-});
+    
+        // Calculate area in acres from GeoJSON
+        function calculateAreaInAcres(polygon) {
+            try {
+                // Calculate area in square meters
+                let area = turf.area(polygon);
+                // Convert to acres (1 sq meter = 0.000247105 acres)
+                return area * 0.000247105;
+            } catch (error) {
+                console.error("Area calculation error:", error);
+                return 0;
+            }
+        }
+    
+        // Handle form submission
+
+        document.getElementById("plantationForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+    
+            let boundaryData = document.getElementById("boundary").value;
+    
+            if (!boundaryData || boundaryData === "null" || boundaryData === "undefined") {
+                alert("⚠️ You must draw a plantation boundary before submitting!");
+                return;
+            }
+    
+            let formData = new FormData(this);
+
+            fetch(`/add-plantation/${farmerId}/`, {
+                method: "POST",
+                body: formData,
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    let messageDiv = document.getElementById("message");
+                    messageDiv.innerHTML = "";
+    
+                    if (data.success) {
+                        messageDiv.innerHTML = `
+                            <div class="alert alert-success mt-3">
+                                <p>✅ Plantation added successfully!</p>
+                                <button id="addAnotherPlantationBtn" class="btn btn-primary mt-2">➕ Add Another Plantation</button>
+                                <button id="proceedToSpeciesBtn" class="btn btn-success mt-2">🌱 Proceed to Add Species</button>
+                            </div>
+                        `;
+    
+                        // Hide form after submission
+                        document.getElementById("plantationForm").style.display = "none";
+    
+                        // Attach event listeners for buttons
+                        if (!data.farmer_id || data.farmer_id === "undefined" || data.farmer_id === "null") {
+                            alert("⚠️ Farmer ID is missing or invalid in the response. Please refresh the page.");
+                            return;
+                        }
+                        
+                        // Attach event listeners for buttons
+                        document.getElementById("addAnotherPlantationBtn").addEventListener("click", addAnotherPlantation);
+                        document.getElementById("proceedToSpeciesBtn").addEventListener("click", function () {
+                            proceedToSpecies(data.farmer_id);  // Use the validated farmer_id
+                        });
+                    } else {
+                        messageDiv.innerHTML = `<p class="text-danger">❌ Error: ${JSON.stringify(data.errors)}</p>`;
+                    }
+                })
+                .catch(error => console.error("AJAX Error:", error));
+        });
+    
+        // Reset form for another plantation
+        function addAnotherPlantation() {
+            document.getElementById("plantationForm").reset();
+            document.getElementById("message").innerHTML = "";
+            document.getElementById("plantationForm").style.display = "block";
+            drawnItems.clearLayers();
+        }
+    
+        // Proceed to species form
+        function proceedToSpecies(farmerId) {
+            window.location.href = `/add-species/${farmerId}/`;
+        }
+    });
 </script>
-
 {% endblock %}

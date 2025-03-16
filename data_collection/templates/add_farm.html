@@ -1,23 +1,36 @@
+
 {% extends "data_collection/templates/base.html" %}
 {% load static %}
 
 {% block content %}
 <h2>Add Farm for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
 
+<!-- Success/Error Message -->
+<div id="message"></div>
+
+<!-- Existing Farms List -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Existing Farms</h3>
+    </div>
+    <div class="card-body">
+        <div id="farmsList">
+            <p>Loading existing farms...</p>
+        </div>
+    </div>
+</div>
+
 <!-- Farm Form -->
 <form id="farmForm" method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <input type="hidden" name="boundary" id="boundary">
-    <button type="submit">Submit</button>
+    <button type="submit" class="btn btn-primary">Submit Farm</button>
 </form>
 
 <!-- Map Container -->
 <h3>Draw the Farm Boundary</h3>
 <div id="map" style="height: 400px;"></div>
-
-<!-- Success/Error Message -->
-<div id="message"></div>
 
 <!-- Leaflet & Leaflet Draw JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
@@ -27,16 +40,16 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-       // Base map layers
-       var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Base map layers
+    var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 22  // ✅ Allow max zoom
+        maxZoom: 22
     });
 
     var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
         attribution: '&copy; Google Satellite',
-        maxZoom: 22  // ✅ Higher zoom for better details
+        maxZoom: 22
     });
 
     var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
@@ -61,18 +74,19 @@ document.addEventListener("DOMContentLoaded", function() {
         attribution: '&copy; Esri, HERE, Garmin',
         maxZoom: 22
     });
+    
     var esriClarity = L.tileLayer(
         'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-        maxZoom: 22  // ✅ Allows deeper zoom levels
+        maxZoom: 22
     });       
 
-    // ✅ Fixed: Correct initialization of map
+    // Map initialization
     var map = L.map('map', {
         center: [23.6157, 81.9195], 
         zoom: 6,
-        maxZoom: 22,  // ✅ Maximum zoom allowed
-        layers: [esri, esriLabels]  // ✅ Now Esri loads correctly
+        maxZoom: 22,
+        layers: hybrid
     });
 
     // Layer control to switch between different maps
@@ -91,34 +105,151 @@ document.addEventListener("DOMContentLoaded", function() {
 
     L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-       // Try to get the user's location
+    // Feature group for existing farms
+    var existingFarms = new L.FeatureGroup();
+    map.addLayer(existingFarms);
+
+    // Feature group for drawn items
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // Get existing farms from API
+    fetchExistingFarms();
+
+    // Function to fetch existing farms
+    function fetchExistingFarms() {
+        fetch(`/api/farms/{{ farmer.id }}/`, {
+            method: "GET",
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Clear existing farms
+            existingFarms.clearLayers();
+            
+            // Display farms in the list
+            let farmsListHtml = '';
+            
+            if (data.farms && data.farms.length > 0) {
+                farmsListHtml = '<ul class="list-group">';
+                
+                // Generate farm colors for consistency
+                const farmColors = {};
+                data.farms.forEach((farm, index) => {
+                    // Generate colors based on index
+                    const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3', '#33FFF3', '#FF8C33', '#8C33FF'];
+                    farmColors[farm.id] = colors[index % colors.length];
+                });
+                
+                // Add farms to the list and map
+                data.farms.forEach(farm => {
+                    const farmColor = farmColors[farm.id];
+                    
+                    // Add to HTML list
+                    farmsListHtml += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-secondary" style="background-color: ${farmColor} !important;">&nbsp;</span>
+                                ${farm.farm_name}
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary zoom-to-farm" data-farm-id="${farm.id}">
+                                Zoom to Farm
+                            </button>
+                        </li>
+                    `;
+                    
+                    // Add boundary to map
+                    try {
+                        const geoJsonFeature = JSON.parse(farm.boundary);
+                        const layer = L.geoJSON(geoJsonFeature, {
+                            style: {
+                                color: farmColor,
+                                fillColor: farmColor,
+                                fillOpacity: 0.3,
+                                weight: 2
+                            }
+                        });
+                        
+                        layer.farmId = farm.id;
+                        layer.farmName = farm.farm_name;
+                        
+                        // Add popup with farm name
+                        layer.bindPopup(`<strong>${farm.farm_name}</strong>`);
+                        
+                        // Add to existing farms layer group
+                        existingFarms.addLayer(layer);
+                    } catch (e) {
+                        console.error("Error parsing farm boundary:", e);
+                    }
+                });
+                
+                farmsListHtml += '</ul>';
+                
+                // Fit map to show all farms
+                if (existingFarms.getLayers().length > 0) {
+                    map.fitBounds(existingFarms.getBounds(), { padding: [50, 50] });
+                }
+            } else {
+                farmsListHtml = '<p>No farms added yet. Draw a boundary and submit the form to add your first farm.</p>';
+            }
+            
+            document.getElementById("farmsList").innerHTML = farmsListHtml;
+            
+            // Add event listeners to zoom buttons
+            document.querySelectorAll('.zoom-to-farm').forEach(button => {
+                button.addEventListener('click', function() {
+                    const farmId = parseInt(this.getAttribute('data-farm-id'));
+                    zoomToFarm(farmId);
+                });
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching farms:", error);
+            document.getElementById("farmsList").innerHTML = '<p class="text-danger">Error loading farms. Please try refreshing the page.</p>';
+        });
+    }
+    
+    // Function to zoom to a specific farm
+    function zoomToFarm(farmId) {
+        existingFarms.eachLayer(layer => {
+            if (layer.farmId === farmId) {
+                map.fitBounds(layer.getBounds());
+                layer.openPopup();
+            }
+        });
+    }
+    
+    // Try to get the user's location
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 var lat = position.coords.latitude;
                 var lng = position.coords.longitude;
 
-                // Set map view to user's location
-                map.setView([lat, lng], 14);
+                // Set map view to user's location if no farms exist
+                if (existingFarms.getLayers().length === 0) {
+                    map.setView([lat, lng], 14);
+                }
 
                 // Add marker at user's location
                 marker = L.marker([lat, lng]).addTo(map)
                     .bindPopup("Your Current Location").openPopup();
 
-                // Store lat/lng in hidden form fields
-                document.getElementById("latitude").value = lat;
-                document.getElementById("longitude").value = lng;
+                // Store lat/lng in hidden form fields if they exist
+                if (document.getElementById("latitude")) {
+                    document.getElementById("latitude").value = lat;
+                }
+                if (document.getElementById("longitude")) {
+                    document.getElementById("longitude").value = lng;
+                }
             },
             function(error) {
                 console.error("Geolocation error: " + error.message);
             }
         );
     } else {
-        alert("Geolocation is not supported by your browser.");
+        console.log("Geolocation is not supported by your browser.");
     }
-
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
 
     var drawControl = new L.Control.Draw({
         edit: { featureGroup: drawnItems },
@@ -146,31 +277,72 @@ document.addEventListener("DOMContentLoaded", function() {
 // AJAX Form Submission
 document.getElementById("farmForm").addEventListener("submit", function(event) {
     event.preventDefault();
-
+    
     var formData = new FormData(this);
 
     fetch("{% url 'add_farm' farmer.id %}", {
         method: "POST",
         body: formData,
-        headers: {
-            "X-Requested-With": "XMLHttpRequest"
-        }
+        headers: { "X-Requested-With": "XMLHttpRequest" }
     })
     .then(response => response.json())
     .then(data => {
         let messageDiv = document.getElementById("message");
 
         if (data.success) {
-            messageDiv.innerHTML = "<p style='color: green;'>Farm created successfully! Redirecting...</p>";
-            setTimeout(() => {
-                window.location.href = `/add-plantation/${data.farm_id}/`;
-            }, 1500);
+            messageDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <p>✅ Farm created successfully!</p>
+                    <button class="btn btn-primary mt-2" onclick="addAnotherFarm()">➕ Add Another Farm</button>
+                    <button class="btn btn-success mt-2" onclick="proceedToPlantation(${data.farmer_id})">
+                        🌱 Proceed to Plantation
+                    </button>
+                </div>
+            `;
+
+            // Hide the form after successful submission
+            document.getElementById("farmForm").style.display = "none";
+            
+            // Refresh farms list and map
+            fetchExistingFarms();
         } else {
-            messageDiv.innerHTML = "<p style='color: red;'>Error: " + JSON.stringify(data.errors) + "</p>";
+            messageDiv.innerHTML = `<p style='color: red;'>❌ Error: ${JSON.stringify(data.errors)}</p>`;
         }
     })
     .catch(error => console.error("AJAX Error:", error));
 });
+
+// Function to add another farm
+function addAnotherFarm() {
+    document.getElementById("farmForm").reset();
+    document.getElementById("message").innerHTML = "";
+    document.getElementById("farmForm").style.display = "block";
+}
+
+// Function to proceed to plantation
+function proceedToPlantation(farmerId) {
+    if (!farmerId) {
+        alert("❌ Farmer ID missing! Cannot proceed to plantation.");
+        return;
+    }
+    window.location.href = `/add-plantation/${farmerId}/`;
+}
+
+// Function to fetch existing farms (available globally)
+function fetchExistingFarms() {
+    fetch(`/api/farms/{{ farmer.id }}/`, {
+        method: "GET",
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Handle farm data...
+        // This would be processed by the DOM content loaded handler
+        // Just trigger a page refresh to reload everything
+        window.location.reload();
+    })
+    .catch(error => console.error("Error fetching farms:", error));
+}
 </script>
 
 {% endblock %}
