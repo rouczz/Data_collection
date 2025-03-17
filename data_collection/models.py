@@ -2,8 +2,8 @@ from django.contrib.gis.db import models
 
 class Farmer(models.Model):
     aadhar = models.CharField(max_length=16, unique=True)
-    country_id = models.IntegerField(default=1)
-    block_id = models.IntegerField(default=0)
+    country_id = models.IntegerField(default=2)
+    block_id = models.IntegerField()
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     mobile_number = models.CharField(max_length=15)

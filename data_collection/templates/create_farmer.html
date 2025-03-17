@@ -10,11 +10,36 @@
 
             <form method="post" enctype="multipart/form-data" class="card p-4 shadow">  <!-- ✅ Add enctype -->
                 {% csrf_token %}            
+                <div class="mb-3">
+                    <label for="stateSelect" class="form-label">Select State</label>
+                    <select id="stateSelect" class="form-control" required>
+                        <option value="">-- Select State --</option>
+                    </select>
+                </div>
                 
+                <div class="mb-3">
+                    <label for="districtSelect" class="form-label">Select District</label>
+                    <select id="districtSelect" class="form-control" disabled required>
+                        <option value="">-- Select District --</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="blockSelect" class="form-label">Select Block</label>
+                    <select id="blockSelect" name="block_id" class="form-control" disabled required>
+                        <option value="">-- Select Block --</option>
+                    </select>
+                </div>
                 <div class="mb-3">
                     <label class="form-label">Aadhar Number</label>
                     {{ form.aadhar }}
+                    {% if form.aadhar.errors %}
+                        <div class="text-danger">
+                            {{ form.aadhar.errors }}
+                        </div>
+                    {% endif %}
                 </div>
+
                 
                 <div class="mb-3">
                     <label class="form-label">First Name</label>
@@ -25,10 +50,14 @@
                     <label class="form-label">Last Name</label>
                     {{ form.last_name }}
                 </div>
-
                 <div class="mb-3">
                     <label class="form-label">Mobile Number</label>
                     {{ form.mobile_number }}
+                    {% if form.mobile_number.errors %}
+                        <div class="text-danger">
+                            {{ form.mobile_number.errors }}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <div class="mb-3">
@@ -49,6 +78,11 @@
                 <div class="mb-3">
                     <label class="form-label">Pincode</label>
                     {{ form.pincode }}
+                    {% if form.pincode.errors %}
+                        <div class="text-danger">
+                            {{ form.pincode.errors }}
+                        </div>
+                    {% endif %}
                 </div>
 
                 <div class="mb-3">
@@ -197,6 +231,87 @@ document.addEventListener("DOMContentLoaded", function() {
 
         marker = L.marker([lat, lng]).addTo(map)
             .bindPopup("Selected Location").openPopup();
+    });
+});
+document.addEventListener("DOMContentLoaded", function () {
+    const stateSelect = document.getElementById("stateSelect");
+    const districtSelect = document.getElementById("districtSelect");
+    const blockSelect = document.getElementById("blockSelect");
+
+    // Fetch and populate States
+    fetch("https://backend.varahaag.com/core/api/state/all/?country_id=2")
+        .then(response => response.json())
+        .then(states => {
+            states.forEach(state => {
+                const option = document.createElement("option");
+                option.value = state.id;
+                option.textContent = state.display_name;
+                stateSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching states:", error);
+            alert("Failed to load states. Please try again later.");
+        });
+
+    // Handle State Selection to Load Districts
+    stateSelect.addEventListener("change", function () {
+        const stateId = this.value;
+
+        if (!stateId) {
+            districtSelect.innerHTML = '<option value="">-- Select District --</option>';
+            districtSelect.disabled = true;
+            blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
+            blockSelect.disabled = true;
+            return;
+        }
+
+        // Fetch and populate Districts
+        fetch(`https://backend.varahaag.com/core/api/district/all/?state_id=${stateId}`)
+            .then(response => response.json())
+            .then(districts => {
+                districtSelect.innerHTML = '<option value="">-- Select District --</option>';
+                districts.forEach(district => {
+                    const option = document.createElement("option");
+                    option.value = district.id;
+                    option.textContent = district.display_name;
+                    districtSelect.appendChild(option);
+                });
+                districtSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error("Error fetching districts:", error);
+                alert("Failed to load districts. Please try again later.");
+            });
+    });
+
+    // Handle District Selection to Load Blocks
+    districtSelect.addEventListener("change", function () {
+        const districtId = this.value;
+
+        if (!districtId) {
+            blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
+            blockSelect.disabled = true;
+            return;
+        }
+
+        // Fetch and populate Blocks
+        fetch(`https://backend.varahaag.com/core/api/block/all/?district_id=${districtId}`)
+            .then(response => response.json())
+            .then(blocks => {
+                blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
+                blocks.forEach(block => {
+                    const option = document.createElement("option");
+                    option.value = block.id;
+                    option.textContent = block.display_name;
+                    blockSelect.appendChild(option);
+                });
+                blockSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error("Error fetching blocks:", error);
+                alert("Failed to load blocks. Please try again later.");
+            });
     });
 });
 </script>

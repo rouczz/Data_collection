@@ -14,6 +14,7 @@ def create_farmer(request):
 
         if form.is_valid() and lat and lng:
             farmer = form.save(commit=False)
+            farmer.block_id = request.POST.get("block_id")  # Save the block_id
             farmer.geo_tag = Point(float(lng), float(lat))
             
 

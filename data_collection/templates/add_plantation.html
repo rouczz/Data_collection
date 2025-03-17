@@ -200,55 +200,6 @@
             map.off(L.Draw.Event.CREATED);
             map.off(L.Draw.Event.EDITED);
             
-            // Handle polygon creation event with improved validation
-            map.on(L.Draw.Event.CREATED, function (event) {
-                let layer = event.layer;
-                let drawnPolygon = layer.toGeoJSON();
-                
-                console.log("Farm boundary:", farmBoundary);
-                console.log("Drawn polygon:", drawnPolygon);
-    
-                // Fix for validation issues - use a more reliable approach
-                try {
-                    // First, make sure we normalize the GeoJSON format if needed
-                    if (farmBoundary.type === "Feature" && farmBoundary.geometry) {
-                        farmBoundary = farmBoundary.geometry;
-                    }
-                    
-                    // Ensure we're working with the right coordinate structure
-                    let farmCoords = farmBoundary.coordinates || farmBoundary.geometry.coordinates;
-                    let drawnCoords = drawnPolygon.geometry.coordinates;
-                    
-                    // Create proper turf polygons
-                    let farmPolygon = turf.polygon(farmCoords);
-                    let drawnPolygonGeom = turf.polygon(drawnCoords);
-                    
-                    // Check if drawn polygon is fully within farm boundary
-                    // Use a different turf function if booleanWithin is problematic
-                    let isWithin = turf.booleanContains(farmPolygon, drawnPolygonGeom);
-                    
-                    if (!isWithin) {
-                        alert("⚠️ The plantation boundary must be fully inside the farm boundary!");
-                        return;
-                    }
-                    
-                    // Calculate area in acres
-                    let area = calculateAreaInAcres(drawnPolygon);
-                    document.getElementById("id_area_in_acres").value = area.toFixed(2);
-        
-                    // Add the valid polygon to the map
-                    drawnItems.clearLayers(); // Clear previous drawings
-                    drawnItems.addLayer(layer);
-        
-                    // Store the valid polygon in the hidden input field
-                    document.getElementById("boundary").value = JSON.stringify(drawnPolygon);
-                    
-                    console.log("Validation passed! Polygon is within farm boundary.");
-                } catch (error) {
-                    console.error("Validation error:", error);
-                    alert("⚠️ Error validating boundary. Please try again or check console for details.");
-                }
-            });
             
             // Handle polygon creation event with improved validation
             map.on(L.Draw.Event.CREATED, function (event) {
