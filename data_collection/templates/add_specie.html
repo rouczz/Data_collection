@@ -144,40 +144,30 @@
         document.getElementById("specieForm").style.display = "block";  // Show form again
     }
     document.addEventListener("DOMContentLoaded", function () {
-        fetch("https://backend.varahaag.com/core/api/plantation/species/all/")
-            .then(response => response.json())
-            .then(data => {
-                const specieSelect = document.getElementById("specieSelect");
-                const specieImagePreview = document.getElementById("specieImagePreview");
+        const specieSelect = document.getElementById("specieSelect");
     
+        // Fetch species data from the backend
+        fetch("/api/plantation/species/all/")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Populate the species dropdown
                 data.forEach(specie => {
                     const option = document.createElement("option");
                     option.value = specie.id;
                     option.textContent = specie.display_name;
                     specieSelect.appendChild(option);
-    
-                    // Store the image URL as a data attribute
-                    option.dataset.imageUrl = specie.image_url;
-                });
-    
-                // Update image preview when a species is selected
-                specieSelect.addEventListener("change", function () {
-                    const selectedOption = specieSelect.options[specieSelect.selectedIndex];
-                    const imageUrl = selectedOption.dataset.imageUrl;
-    
-                    if (imageUrl) {
-                        specieImagePreview.src = imageUrl;
-                        specieImagePreview.style.display = "block";
-                    } else {
-                        specieImagePreview.src = "";
-                        specieImagePreview.style.display = "none";
-                    }
                 });
             })
             .catch(error => {
                 console.error("Error fetching species data:", error);
                 alert("Failed to load species data. Please try again later.");
             });
+    
     });
 </script>
 

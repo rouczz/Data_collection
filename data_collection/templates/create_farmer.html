@@ -239,7 +239,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const blockSelect = document.getElementById("blockSelect");
 
     // Fetch and populate States
-    fetch("https://backend.varahaag.com/core/api/state/all/?country_id=2")
+    fetch("/api/states/")
         .then(response => response.json())
         .then(states => {
             states.forEach(state => {
@@ -267,7 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Fetch and populate Districts
-        fetch(`https://backend.varahaag.com/core/api/district/all/?state_id=${stateId}`)
+        fetch(`/api/districts/${stateId}/`)
             .then(response => response.json())
             .then(districts => {
                 districtSelect.innerHTML = '<option value="">-- Select District --</option>';
@@ -296,7 +296,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Fetch and populate Blocks
-        fetch(`https://backend.varahaag.com/core/api/block/all/?district_id=${districtId}`)
+        fetch(`/api/blocks/${districtId}/`)
             .then(response => response.json())
             .then(blocks => {
                 blockSelect.innerHTML = '<option value="">-- Select Block --</option>';

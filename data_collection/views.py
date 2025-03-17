@@ -314,4 +314,3 @@ def get_plantations_for_farm(request, farm_id):
         "plantations": plantation_data,
         "farm_boundary": farm_boundary
     })
-

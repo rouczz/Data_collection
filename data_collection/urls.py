@@ -3,6 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from .views import *
 from .postapi import *
+from .vaarha_api import *
 
 urlpatterns = [
     path('', create_farmer, name='create_farmer'),
@@ -19,6 +20,13 @@ urlpatterns = [
 
     #POST API 
     path('send-farmer/<int:farmer_id>/', send_farmer_data, name='send_farmer_data'),
+
+
+    #Get API call from Vaarha
+    path("api/states/", get_states, name="get_states"),
+    path("api/districts/<int:state_id>/",get_districts, name="get_districts"),
+    path("api/blocks/<int:district_id>/",get_blocks, name="get_blocks"),
+    path("api/plantation/species/all/", get_species, name="get_species"),
 ]
 # Compare this snippet from KMcollect/data_collection/views.py: 
 
