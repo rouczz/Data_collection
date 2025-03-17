@@ -105,7 +105,7 @@
     
                 // Draw new farm boundary
                 farmBoundaryLayer = L.geoJSON(boundary, { color: "blue", fillOpacity: 0.3 }).addTo(map);
-                map.fitBounds(farmBoundaryLayer.getBounds());
+                map.fitBounds(farmBoundaryLayer.getBounds(), { maxZoom: 18 }); 
     
                 // Clear previously drawn items
                 drawnItems.clearLayers();
@@ -187,7 +187,7 @@
                             weight: 3
                         }
                     },
-                    circle: false,
+                    circle: true,
                     circlemarker: false
                 }
             });
@@ -316,19 +316,33 @@
     
         // Handle form submission
 
+        // Define farmerId from the Django template context
+        var farmerId = {{ farmer.id }};
+        console.log("Farmer ID:", farmerId); // Debugging: Log the farmerId to confirm it's set
+
         document.getElementById("plantationForm").addEventListener("submit", function (event) {
             event.preventDefault();
-    
+
             let boundaryData = document.getElementById("boundary").value;
-    
+
             if (!boundaryData || boundaryData === "null" || boundaryData === "undefined") {
                 alert("⚠️ You must draw a plantation boundary before submitting!");
                 return;
             }
-    
+
+            // Validate farmerId before proceeding
+            if (!farmerId || farmerId === "undefined" || farmerId === "null") {
+                alert("⚠️ Farmer ID is missing or invalid. Please refresh the page.");
+                return;
+            }
+
             let formData = new FormData(this);
 
-            fetch(`/add-plantation/${farmerId}/`, {
+            // Construct the URL and log it for debugging
+            let url = `/add-plantation/${farmerId}/`;
+            console.log("Constructed URL:", url);
+
+            fetch(url, {
                 method: "POST",
                 body: formData,
                 headers: { "X-Requested-With": "XMLHttpRequest" }
@@ -337,7 +351,7 @@
                 .then(data => {
                     let messageDiv = document.getElementById("message");
                     messageDiv.innerHTML = "";
-    
+
                     if (data.success) {
                         messageDiv.innerHTML = `
                             <div class="alert alert-success mt-3">
@@ -346,20 +360,14 @@
                                 <button id="proceedToSpeciesBtn" class="btn btn-success mt-2">🌱 Proceed to Add Species</button>
                             </div>
                         `;
-    
+
                         // Hide form after submission
                         document.getElementById("plantationForm").style.display = "none";
-    
-                        // Attach event listeners for buttons
-                        if (!data.farmer_id || data.farmer_id === "undefined" || data.farmer_id === "null") {
-                            alert("⚠️ Farmer ID is missing or invalid in the response. Please refresh the page.");
-                            return;
-                        }
-                        
+
                         // Attach event listeners for buttons
                         document.getElementById("addAnotherPlantationBtn").addEventListener("click", addAnotherPlantation);
                         document.getElementById("proceedToSpeciesBtn").addEventListener("click", function () {
-                            proceedToSpecies(data.farmer_id);  // Use the validated farmer_id
+                            proceedToSpecies(data.farmer_id); // Use the validated farmer_id
                         });
                     } else {
                         messageDiv.innerHTML = `<p class="text-danger">❌ Error: ${JSON.stringify(data.errors)}</p>`;

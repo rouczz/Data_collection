@@ -46,7 +46,7 @@ def add_farm(request, farmer_id):
             farm.farmer = farmer  # ✅ Link farm to the farmer
             farm.boundary = GEOSGeometry(boundary_geojson) 
             farm.save()
-            return JsonResponse({"success": True, "farm_id": farm.id, "farmer_id": farmer.id})  # ✅ Send farmer_id
+            return JsonResponse({"success": True, "farm_id": farm.id})  # ✅ Send farmer_id
         else:
             return JsonResponse({"success": False, "errors": form.errors})
 
@@ -102,7 +102,11 @@ def add_plantation(request, farmer_id):
                 # Convert to GEOSGeometry
                 plantation.boundary = GEOSGeometry(geometry_json)
                 plantation.save()
-                return JsonResponse({"success": True, "plantation_id": plantation.id})
+                return JsonResponse({
+                    "success": True,
+                    "plantation_id": plantation.id,
+                    "farmer_id": farmer_id  # Include the farmer_id in the response
+                })
             except Exception as e:
                 print(f"ERROR parsing GeoJSON: {str(e)}")
                 return JsonResponse({"success": False, "errors": f"Invalid boundary format: {str(e)}"})
@@ -112,7 +116,7 @@ def add_plantation(request, farmer_id):
     else:
         form = PlantationForm()
     
-    return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farms": farms, "farmer": farmer})
+    return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farms": farms, "farmer": farmer, "farmer_id": farmer.id})
 
 
 from django.db.models import Q
