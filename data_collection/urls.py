@@ -15,6 +15,7 @@ urlpatterns = [
     path("dashboard-farmers/", get_farmers_list, name="dashboard_farmers"),
     path('dashboard/', dashboard, name='dashboard'),
     path('get-plantations/<int:farm_id>/', get_plantations_for_farm, name='get_plantations_for_farm'),
+    path("upload-media/<int:farmer_id>/", upload_media, name="upload_media"),
 
 
 

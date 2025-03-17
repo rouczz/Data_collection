@@ -73,3 +73,28 @@ class GeotaggedSapling(models.Model):
 
     def __str__(self):
         return f"Sapling in {self.plantation.kyari_name}"
+
+
+def farmer_media_path(instance, filename):
+    # Store files under media/farmer_media/<farmer_id>/
+    return f"farmer_media/{instance.farmer.id}/{filename}"
+
+class FarmerMedia(models.Model):
+    # Linked to the Farmer model
+    farmer = models.ForeignKey(Farmer, on_delete=models.CASCADE, related_name="media")
+
+    # Media fields
+    picture = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    photo_of_english_epic = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    photo_of_regional_language_epic = models.ImageField(upload_to=farmer_media_path, null=True,blank=True)
+    id_proof_front = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    id_proof_back = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    land_ownership = models.FileField(upload_to=farmer_media_path)
+    picture_of_tree = models.ImageField(upload_to=farmer_media_path)
+    digital_signature = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+
+    # Timestamp
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Media for {self.farmer.first_name} {self.farmer.last_name}"

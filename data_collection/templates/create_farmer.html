@@ -211,7 +211,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (error.code === error.PERMISSION_DENIED) {
                     alert("Location access denied. Please enable location services.");
                 }
-            }
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // High accuracy options
         );
     } else {
         alert("Geolocation is not supported by your browser.");

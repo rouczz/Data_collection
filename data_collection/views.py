@@ -314,3 +314,40 @@ def get_plantations_for_farm(request, farm_id):
         "plantations": plantation_data,
         "farm_boundary": farm_boundary
     })
+
+from django.core.files.base import ContentFile
+import base64
+
+def upload_media(request, farmer_id):
+    farmer = get_object_or_404(Farmer, id=farmer_id)
+
+    if request.method == "POST":
+        try:
+            # Create a new FarmerMedia instance
+            media = FarmerMedia(farmer=farmer)
+
+            # Handle file uploads
+            if "picture" in request.FILES:
+                media.picture = request.FILES["picture"]
+            if "id_proof_front" in request.FILES:
+                media.id_proof_front = request.FILES["id_proof_front"]
+            if "id_proof_back" in request.FILES:
+                media.id_proof_back = request.FILES["id_proof_back"]
+
+            # Handle digital signature (base64 string from canvas)
+            signature_data = request.POST.get("digital_signature")
+            if signature_data:
+                format, imgstr = signature_data.split(';base64,')
+                ext = format.split('/')[-1]
+                signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
+                media.digital_signature.save(f"signature_{farmer.id}.{ext}", signature_file, save=False)
+
+            # Save the media instance
+            media.save()
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "errors": str(e)})
+    # return JsonResponse({"success": False, "errors": "Invalid request method"})
+    # return JsonResponse({"success": False, "errors": "Invalid request method"})
+    return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
