@@ -172,7 +172,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "https://data-collection-0o3b.onrender.com",  # Allow your frontend domain
     "http://localhost:3000",  # Allow local development (if needed)
