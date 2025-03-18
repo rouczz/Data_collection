@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Farmer, Farm, Plantation, Specie, GeotaggedSapling
+from .models import Farmer, Farm, Plantation, Specie, GeotaggedSapling, FarmerMedia
 
 # Register your models here.
 
@@ -50,3 +50,11 @@ class GeotaggedSaplingAdmin(admin.ModelAdmin):
     list_filter = ('specie',)
     search_fields = ('plantation__kyari_name', 'specie__specie_id')
     raw_id_fields = ('plantation', 'specie')
+
+from django.contrib import admin
+from .models import FarmerMedia
+
+@admin.register(FarmerMedia)
+class FarmerMediaAdmin(admin.ModelAdmin):
+    # Dynamically get all field names from the model
+    list_display = [field.name for field in FarmerMedia._meta.get_fields() if not field.is_relation]

@@ -45,6 +45,7 @@ def send_farmer_data(request, farmer_id):
 
         # **Check Response**
         if response.status_code == 201:  # ✅ Success
+            print(response.json())
             return JsonResponse({"success": True, "message": "Farmer data sent successfully!"})
         else:  # ❌ Error
             return JsonResponse({"success": False, "error": response.json()}, status=response.status_code)
@@ -53,3 +54,5 @@ def send_farmer_data(request, farmer_id):
         return JsonResponse({"error": "Farmer not found"}, status=404)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+

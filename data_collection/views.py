@@ -329,10 +329,18 @@ def upload_media(request, farmer_id):
             # Handle file uploads
             if "picture" in request.FILES:
                 media.picture = request.FILES["picture"]
+            if "photo_of_english_epic" in request.FILES:
+                media.photo_of_english_epic = request.FILES["photo_of_english_epic"]
+            if "photo_of_regional_language_epic" in request.FILES:
+                media.photo_of_regional_language_epic = request.FILES["photo_of_regional_language_epic"]
             if "id_proof_front" in request.FILES:
                 media.id_proof_front = request.FILES["id_proof_front"]
             if "id_proof_back" in request.FILES:
                 media.id_proof_back = request.FILES["id_proof_back"]
+            if "land_ownership" in request.FILES:
+                media.land_ownership = request.FILES["land_ownership"]
+            if "picture_of_tree" in request.FILES:
+                media.picture_of_tree = request.FILES["picture_of_tree"]
 
             # Handle digital signature (base64 string from canvas)
             signature_data = request.POST.get("digital_signature")
@@ -348,6 +356,28 @@ def upload_media(request, farmer_id):
             return JsonResponse({"success": True})
         except Exception as e:
             return JsonResponse({"success": False, "errors": str(e)})
-    # return JsonResponse({"success": False, "errors": "Invalid request method"})
-    # return JsonResponse({"success": False, "errors": "Invalid request method"})
+    
     return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
+
+
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+# AWS S3 Settings
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
+AWS_S3_FILE_OVERWRITE = os.getenv('AWS_S3_FILE_OVERWRITE', False)
+AWS_DEFAULT_ACL = os.getenv('AWS_DEFAULT_ACL', None)
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+
+# Use S3 as the default storage backend
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
