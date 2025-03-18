@@ -95,7 +95,6 @@
                     <div class="alert alert-success mt-3">
                         <p>✅ Species added successfully!</p>
                         <button id="addAnotherSpeciesBtn" class="btn btn-primary mt-2">➕ Add Another Species</button>
-                        <button id="viewSpeciesBtn" class="btn btn-info mt-2">👁️ View All Species</button>
                         <button id="createNewFarmerBtn" class="btn btn-success mt-2">👨‍🌾 Create New Farmer</button>
                     </div>
                 `;
@@ -105,9 +104,9 @@
     
                 // Add event listeners to buttons
                 document.getElementById("addAnotherSpeciesBtn").addEventListener("click", addAnotherSpecies);
-                document.getElementById("viewSpeciesBtn").addEventListener("click", function() {
+                {% comment %} document.getElementById("viewSpeciesBtn").addEventListener("click", function() {
                     window.location.href = `/view-species/${farmerId}/`;  // Added view all species button
-                });
+                }); {% endcomment %}
                 document.getElementById("createNewFarmerBtn").addEventListener("click", function() {
                     window.location.href = location.origin + "/";  // Works dynamically
                 });

@@ -21,8 +21,9 @@ urlpatterns = [
 
     #POST API 
     path('send-farmer/<int:farmer_id>/', send_farmer_data, name='send_farmer_data'),
-
-
+    path('send-farm/<int:farm_id>/',send_farm_data, name = "send_farm"),
+    path('send-plantation/<int:plantation_id>/',send_plantation_data, name = "send_plantation_data"),
+    path('send-species/<int:specie_id>/', send_specie_data, name = "send_species_data"),
     #Get API call from Vaarha
     path("api/states/", get_states, name="get_states"),
     path("api/districts/<int:state_id>/",get_districts, name="get_districts"),

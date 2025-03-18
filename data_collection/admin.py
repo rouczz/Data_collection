@@ -6,7 +6,7 @@ from .models import Farmer, Farm, Plantation, Specie, GeotaggedSapling, FarmerMe
 @admin.register(Farmer)
 class FarmerAdmin(admin.ModelAdmin):
     list_display = (
-        'aadhar', 'country_id', 'block_id', 'first_name', 'last_name', 'mobile_number', 
+        'id','aadhar', 'country_id', 'block_id', 'first_name', 'last_name', 'mobile_number', 
         'gender', 'guardian_name', 'geo_tag', 'farmer_consent', 'village', 'pincode', 
         'metadata', 'created_at', 'consent_form'
     )
@@ -17,7 +17,7 @@ class FarmerAdmin(admin.ModelAdmin):
 @admin.register(Farm)
 class FarmAdmin(admin.ModelAdmin):
     list_display = (
-        'farmer', 'farm_name', 'area_in_acres', 'ownership', 'owner_mobile_number', 
+        'id','farmer', 'farm_name', 'area_in_acres', 'ownership', 'owner_mobile_number', 
         'owner_full_name', 'boundary_method', 'boundary', 'metadata'
     )
     list_filter = ('ownership', 'boundary_method')
@@ -27,7 +27,7 @@ class FarmAdmin(admin.ModelAdmin):
 @admin.register(Plantation)
 class PlantationAdmin(admin.ModelAdmin):
     list_display = (
-        'farm', 'kyari_name', 'number_of_saplings', 'area_in_acres', 'plantation_model', 
+        'id','farm', 'kyari_name', 'number_of_saplings', 'area_in_acres', 'plantation_model', 
         'year', 'kyari_type', 'is_feasible', 'boundary', 'metadata', 'kyari_attributes'
     )
     list_filter = ('kyari_type', 'is_feasible', 'year')
@@ -37,7 +37,7 @@ class PlantationAdmin(admin.ModelAdmin):
 @admin.register(Specie)
 class SpecieAdmin(admin.ModelAdmin):
     list_display = (
-        'plantation', 'specie_id', 'number_of_plants', 'plant_spacing', 'spacing_cr', 
+        'id','plantation', 'specie_id', 'number_of_plants', 'plant_spacing', 'spacing_cr', 
         'spacing_cl', 'spacing_ct', 'spacing_cb', 'specie_attributes', 'metadata'
     )
     list_filter = ('specie_id',)

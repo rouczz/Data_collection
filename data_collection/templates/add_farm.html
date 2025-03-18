@@ -26,6 +26,10 @@
     {{ form.as_p }}
     <input type="hidden" name="boundary" id="boundary">
     <button type="submit" class="btn btn-primary">Submit Farm</button>
+    <!-- Button to Add Plantation Boundary -->
+    <div class="mt-3">
+        <button id="addPlantationBoundaryBtn" class="btn btn-success">🌱 Add Plantation Boundary</button>
+    </div>
 </form>
 
 <!-- Map Container -->
@@ -39,84 +43,419 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Base map layers
-    var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 22
-    });
-
-    var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Satellite',
-        maxZoom: 22
-    });
-
-    var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Terrain',
-        maxZoom: 22
-    });
-
-    var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-        attribution: '&copy; Google Hybrid',
-        maxZoom: 22
-    });
-
-    var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri World Imagery',
-        maxZoom: 22
-    });
-
-    // Overlay for Place Names & Boundaries
-    var esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri, HERE, Garmin',
-        maxZoom: 22
+    document.addEventListener("DOMContentLoaded", function() {
+        // Base map layers (unchanged)
+        var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 22
+        });
+    
+        var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Satellite',
+            maxZoom: 22
+        });
+    
+        var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Terrain',
+            maxZoom: 22
+        });
+    
+        var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Hybrid',
+            maxZoom: 22
+        });
+    
+        var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri World Imagery',
+            maxZoom: 22
+        });
+    
+        // Overlay for Place Names & Boundaries
+        var esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri, HERE, Garmin',
+            maxZoom: 22
+        });
+        
+        var esriClarity = L.tileLayer(
+            'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+            maxZoom: 22
+        });       
+    
+        // Map initialization
+        var map = L.map('map', {
+            center: [23.6157, 81.9195], 
+            zoom: 6,
+            maxZoom: 22,
+            layers: hybrid
+        });
+    
+        // Layer control to switch between different maps
+        var baseMaps = {
+            "Streets": streets,
+            "Google Satellite": satellite,
+            "Google Terrain": terrain,
+            "Google Hybrid": hybrid,
+            "Esri World Imagery": esri,
+            "Esri Clarity": esriClarity
+        };
+    
+        var overlayMaps = {
+            "Place Names & Boundaries": esriLabels
+        };
+    
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+    
+        // Feature group for existing farms
+        var existingFarms = new L.FeatureGroup();
+        map.addLayer(existingFarms);
+    
+        // Feature group for drawn items
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+    
+        // Get existing farms from API
+        fetchExistingFarms();
+    
+        // Function to fetch existing farms
+        function fetchExistingFarms() {
+            fetch(`/api/farms/{{ farmer.id }}/`, {
+                method: "GET",
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Clear existing farms
+                existingFarms.clearLayers();
+                
+                // Display farms in the list
+                let farmsListHtml = '';
+                
+                if (data.farms && data.farms.length > 0) {
+                    farmsListHtml = '<ul class="list-group">';
+                    
+                    // Generate farm colors for consistency
+                    const farmColors = {};
+                    data.farms.forEach((farm, index) => {
+                        // Generate colors based on index
+                        const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3', '#33FFF3', '#FF8C33', '#8C33FF'];
+                        farmColors[farm.id] = colors[index % colors.length];
+                    });
+                    
+                    // Add farms to the list and map
+                    data.farms.forEach(farm => {
+                        const farmColor = farmColors[farm.id];
+                        
+                        // Add to HTML list
+                        farmsListHtml += `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-secondary" style="background-color: ${farmColor} !important;">&nbsp;</span>
+                                    ${farm.farm_name}
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary zoom-to-farm" data-farm-id="${farm.id}">
+                                    Zoom to Farm
+                                </button>
+                            </li>
+                        `;
+                        
+                        // Add boundary to map
+                        try {
+                            const geoJsonFeature = JSON.parse(farm.boundary);
+                            const layer = L.geoJSON(geoJsonFeature, {
+                                style: {
+                                    color: farmColor,
+                                    fillColor: farmColor,
+                                    fillOpacity: 0.3,
+                                    weight: 2
+                                }
+                            });
+                            
+                            layer.farmId = farm.id;
+                            layer.farmName = farm.farm_name;
+                            layer.boundary = geoJsonFeature;  // Store the GeoJSON for intersection checking
+                            
+                            // Add popup with farm name
+                            layer.bindPopup(`<strong>${farm.farm_name}</strong>`);
+                            
+                            // Add to existing farms layer group
+                            existingFarms.addLayer(layer);
+                        } catch (e) {
+                            console.error("Error parsing farm boundary:", e);
+                        }
+                    });
+                    
+                    farmsListHtml += '</ul>';
+                    
+                    // Fit map to show all farms
+                    if (existingFarms.getLayers().length > 0) {
+                        map.fitBounds(existingFarms.getBounds(), { padding: [50, 50] });
+                    }
+                } else {
+                    farmsListHtml = '<p>No farms added yet. Draw a boundary and submit the form to add your first farm.</p>';
+                }
+                
+                document.getElementById("farmsList").innerHTML = farmsListHtml;
+                
+                // Add event listeners to zoom buttons
+                document.querySelectorAll('.zoom-to-farm').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const farmId = parseInt(this.getAttribute('data-farm-id'));
+                        zoomToFarm(farmId);
+                    });
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching farms:", error);
+                document.getElementById("farmsList").innerHTML = '<p class="text-danger">Error loading farms. Please try refreshing the page.</p>';
+            });
+        }
+        
+        // Function to zoom to a specific farm
+        function zoomToFarm(farmId) {
+            existingFarms.eachLayer(layer => {
+                if (layer.farmId === farmId) {
+                    map.fitBounds(layer.getBounds());
+                    layer.openPopup();
+                }
+            });
+        }
+        
+        // Try to get the user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+    
+                    // Set map view to user's location if no farms exist
+                    if (existingFarms.getLayers().length === 0) {
+                        map.setView([lat, lng], 14);
+                    }
+    
+                    // Add marker at user's location
+                    marker = L.marker([lat, lng]).addTo(map)
+                        .bindPopup("Your Current Location").openPopup();
+    
+                    // Store lat/lng in hidden form fields if they exist
+                    if (document.getElementById("latitude")) {
+                        document.getElementById("latitude").value = lat;
+                    }
+                    if (document.getElementById("longitude")) {
+                        document.getElementById("longitude").value = lng;
+                    }
+                },
+                function(error) {
+                    console.error("Geolocation error: " + error.message);
+                }
+            );
+        } else {
+            console.log("Geolocation is not supported by your browser.");
+        }
+    
+        // Load Turf.js for polygon intersection checking
+        var turfScript = document.createElement('script');
+        turfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js';
+        document.head.appendChild(turfScript);
+    
+        // Create warning message element
+        var warningContainer = document.createElement('div');
+        warningContainer.id = 'intersection-warning';
+        warningContainer.style.display = 'none';
+        warningContainer.className = 'alert alert-danger mt-2';
+        warningContainer.innerText = 'Warning: Farm boundary overlaps with an existing farm! Please redraw the boundary.';
+        document.getElementById('map').parentNode.insertBefore(warningContainer, document.getElementById('map').nextSibling);
+    
+        var drawControl = new L.Control.Draw({
+            edit: { featureGroup: drawnItems },
+            draw: { 
+                polygon: true,
+                polyline: false,
+                rectangle: true,
+                circle: true,
+                marker: false
+            }
+        });
+        map.addControl(drawControl);
+    
+        // Function to check if polygons intersect
+        function checkForIntersections(newPolygon) {
+            // Make sure Turf.js is loaded
+            if (typeof turf === 'undefined') {
+                console.warn("Turf.js is not loaded yet. Skipping intersection check.");
+                return false;
+            }
+    
+            let hasIntersection = false;
+            
+            // Convert the new polygon to a Turf.js polygon
+            let newTurfPolygon;
+            try {
+                newTurfPolygon = turf.polygon(newPolygon.coordinates);
+            } catch (e) {
+                console.error("Error converting new polygon to Turf.js format:", e);
+                return false;
+            }
+    
+            // Check against all existing farm boundaries
+            existingFarms.eachLayer(existingLayer => {
+                if (hasIntersection) return; // Skip if we already found an intersection
+                
+                if (existingLayer.boundary) {
+                    try {
+                        const existingTurfPolygon = turf.polygon(existingLayer.boundary.coordinates);
+                        
+                        // Check for intersection
+                        const intersection = turf.booleanIntersects(newTurfPolygon, existingTurfPolygon);
+                        
+                        if (intersection) {
+                            console.log(`Intersection detected with farm: ${existingLayer.farmName}`);
+                            // Highlight the farm that intersects
+                            existingLayer.setStyle({
+                                color: 'red',
+                                weight: 3,
+                                fillOpacity: 0.4
+                            });
+                            existingLayer.openPopup();
+                            hasIntersection = true;
+                        } else {
+                            // Reset style if previously highlighted
+                            existingLayer.setStyle({
+                                color: existingLayer.options.style.color,
+                                weight: 2,
+                                fillOpacity: 0.3
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Error checking intersection:", e);
+                    }
+                }
+            });
+            
+            return hasIntersection;
+        }
+    
+        // Handle the drawn polygon
+        map.on(L.Draw.Event.CREATED, function (event) {
+            var layer = event.layer;
+            
+            // Convert to GeoJSON for validation
+            let geoJSON = layer.toGeoJSON().geometry;
+            
+            // Check if this polygon intersects with any existing farms
+            let intersects = checkForIntersections(geoJSON);
+            
+            if (intersects) {
+                // Show warning
+                document.getElementById('intersection-warning').style.display = 'block';
+                
+                // Add layer with red styling to indicate problem
+                drawnItems.clearLayers();
+                layer.setStyle({
+                    color: 'red',
+                    fillColor: '#ff6666',
+                    fillOpacity: 0.4,
+                    weight: 2
+                });
+                drawnItems.addLayer(layer);
+                
+                // Disable form submission
+                document.getElementById('boundary').value = '';
+                document.querySelector('#farmForm button[type="submit"]').disabled = true;
+            } else {
+                // Hide warning if previously shown
+                document.getElementById('intersection-warning').style.display = 'none';
+                
+                // Add layer with normal styling
+                drawnItems.clearLayers();
+                drawnItems.addLayer(layer);
+                
+                // Store boundary and enable form submission
+                document.getElementById('boundary').value = JSON.stringify(geoJSON);
+                document.querySelector('#farmForm button[type="submit"]').disabled = false;
+            }
+        });
+        
+        // Clear warning when editing starts
+        map.on(L.Draw.Event.DRAWSTART, function () {
+            document.getElementById('intersection-warning').style.display = 'none';
+        });
     });
     
-    var esriClarity = L.tileLayer(
-        'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-        maxZoom: 22
-    });       
-
-    // Map initialization
-    var map = L.map('map', {
-        center: [23.6157, 81.9195], 
-        zoom: 6,
-        maxZoom: 22,
-        layers: hybrid
+    // AJAX Form Submission
+    document.getElementById("farmForm").addEventListener("submit", function(event) {
+        event.preventDefault(); // Prevent default form submission
+    
+        // Double-check that boundary exists and doesn't intersect
+        if (!document.getElementById("boundary").value) {
+            document.getElementById("message").innerHTML = `
+                <div class="alert alert-danger">
+                    Please draw a farm boundary on the map.
+                </div>
+            `;
+            return;
+        }
+    
+        var formData = new FormData(this);
+        fetch("{% url 'add_farm' farmer.id %}", {
+            method: "POST",
+            body: formData,
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        })
+        .then(response => response.json())
+        .then(data => {
+            let messageDiv = document.getElementById("message");
+            if (data.success) {
+                messageDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <p>✅ Farm created successfully!</p>
+                        <button class="btn btn-primary mt-2" onclick="addAnotherFarm()">➕ Add Another Farm</button>
+                        <button class="btn btn-success mt-2" onclick="proceedToPlantation(${data.farmer_id})">
+                            🌱 Proceed to Plantation
+                        </button>
+                    </div>
+                `;
+                // Hide the form after successful submission
+                document.getElementById("farmForm").style.display = "none";
+                // Refresh farms list and map
+                fetchExistingFarms();
+            } else {
+                messageDiv.innerHTML = `<p style='color: red;'>❌ Error: ${JSON.stringify(data.errors)}</p>`;
+            }
+        })
+        .catch(error => console.error("AJAX Error:", error));
     });
-
-    // Layer control to switch between different maps
-    var baseMaps = {
-        "Streets": streets,
-        "Google Satellite": satellite,
-        "Google Terrain": terrain,
-        "Google Hybrid": hybrid,
-        "Esri World Imagery": esri,
-        "Esri Clarity": esriClarity
-    };
-
-    var overlayMaps = {
-        "Place Names & Boundaries": esriLabels
-    };
-
-    L.control.layers(baseMaps, overlayMaps).addTo(map);
-
-    // Feature group for existing farms
-    var existingFarms = new L.FeatureGroup();
-    map.addLayer(existingFarms);
-
-    // Feature group for drawn items
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    // Get existing farms from API
-    fetchExistingFarms();
-
-    // Function to fetch existing farms
+    
+    // Function to add another farm
+    function addAnotherFarm() {
+        document.getElementById("farmForm").reset();
+        document.getElementById("message").innerHTML = "";
+        document.getElementById("farmForm").style.display = "block";
+        document.getElementById("intersection-warning").style.display = "none";
+        document.querySelector('#farmForm button[type="submit"]').disabled = false;
+        
+        // Clear drawn items
+        if (window.drawnItems) {
+            window.drawnItems.clearLayers();
+        }
+    }
+    
+    // Function to proceed to plantation
+    function proceedToPlantation(farmerId) {
+        if (!farmerId) {
+            alert("❌ Farmer ID missing! Cannot proceed to plantation.");
+            return;
+        }
+        window.location.href = `/add-plantation/${farmerId}/`;
+    }
+    document.getElementById("addPlantationBoundaryBtn").addEventListener("click", function() {
+        // Show the plantation boundary form or map
+        window.location.href = `/add-plantation/{{ farmer.id }}/`;
+    });
+    // Function to fetch existing farms (available globally)
     function fetchExistingFarms() {
         fetch(`/api/farms/{{ farmer.id }}/`, {
             method: "GET",
@@ -124,225 +463,13 @@ document.addEventListener("DOMContentLoaded", function() {
         })
         .then(response => response.json())
         .then(data => {
-            // Clear existing farms
-            existingFarms.clearLayers();
-            
-            // Display farms in the list
-            let farmsListHtml = '';
-            
-            if (data.farms && data.farms.length > 0) {
-                farmsListHtml = '<ul class="list-group">';
-                
-                // Generate farm colors for consistency
-                const farmColors = {};
-                data.farms.forEach((farm, index) => {
-                    // Generate colors based on index
-                    const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3', '#33FFF3', '#FF8C33', '#8C33FF'];
-                    farmColors[farm.id] = colors[index % colors.length];
-                });
-                
-                // Add farms to the list and map
-                data.farms.forEach(farm => {
-                    const farmColor = farmColors[farm.id];
-                    
-                    // Add to HTML list
-                    farmsListHtml += `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge bg-secondary" style="background-color: ${farmColor} !important;">&nbsp;</span>
-                                ${farm.farm_name}
-                            </div>
-                            <button class="btn btn-sm btn-outline-primary zoom-to-farm" data-farm-id="${farm.id}">
-                                Zoom to Farm
-                            </button>
-                        </li>
-                    `;
-                    
-                    // Add boundary to map
-                    try {
-                        const geoJsonFeature = JSON.parse(farm.boundary);
-                        const layer = L.geoJSON(geoJsonFeature, {
-                            style: {
-                                color: farmColor,
-                                fillColor: farmColor,
-                                fillOpacity: 0.3,
-                                weight: 2
-                            }
-                        });
-                        
-                        layer.farmId = farm.id;
-                        layer.farmName = farm.farm_name;
-                        
-                        // Add popup with farm name
-                        layer.bindPopup(`<strong>${farm.farm_name}</strong>`);
-                        
-                        // Add to existing farms layer group
-                        existingFarms.addLayer(layer);
-                    } catch (e) {
-                        console.error("Error parsing farm boundary:", e);
-                    }
-                });
-                
-                farmsListHtml += '</ul>';
-                
-                // Fit map to show all farms
-                if (existingFarms.getLayers().length > 0) {
-                    map.fitBounds(existingFarms.getBounds(), { padding: [50, 50] });
-                }
-            } else {
-                farmsListHtml = '<p>No farms added yet. Draw a boundary and submit the form to add your first farm.</p>';
-            }
-            
-            document.getElementById("farmsList").innerHTML = farmsListHtml;
-            
-            // Add event listeners to zoom buttons
-            document.querySelectorAll('.zoom-to-farm').forEach(button => {
-                button.addEventListener('click', function() {
-                    const farmId = parseInt(this.getAttribute('data-farm-id'));
-                    zoomToFarm(farmId);
-                });
-            });
+            // Handle farm data...
+            // This would be processed by the DOM content loaded handler
+            // Just trigger a page refresh to reload everything
+            window.location.reload();
         })
-        .catch(error => {
-            console.error("Error fetching farms:", error);
-            document.getElementById("farmsList").innerHTML = '<p class="text-danger">Error loading farms. Please try refreshing the page.</p>';
-        });
+        .catch(error => console.error("Error fetching farms:", error));
     }
-    
-    // Function to zoom to a specific farm
-    function zoomToFarm(farmId) {
-        existingFarms.eachLayer(layer => {
-            if (layer.farmId === farmId) {
-                map.fitBounds(layer.getBounds());
-                layer.openPopup();
-            }
-        });
-    }
-    
-    // Try to get the user's location
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                var lat = position.coords.latitude;
-                var lng = position.coords.longitude;
-
-                // Set map view to user's location if no farms exist
-                if (existingFarms.getLayers().length === 0) {
-                    map.setView([lat, lng], 14);
-                }
-
-                // Add marker at user's location
-                marker = L.marker([lat, lng]).addTo(map)
-                    .bindPopup("Your Current Location").openPopup();
-
-                // Store lat/lng in hidden form fields if they exist
-                if (document.getElementById("latitude")) {
-                    document.getElementById("latitude").value = lat;
-                }
-                if (document.getElementById("longitude")) {
-                    document.getElementById("longitude").value = lng;
-                }
-            },
-            function(error) {
-                console.error("Geolocation error: " + error.message);
-            }
-        );
-    } else {
-        console.log("Geolocation is not supported by your browser.");
-    }
-
-    var drawControl = new L.Control.Draw({
-        edit: { featureGroup: drawnItems },
-        draw: { 
-            polygon: true,
-            polyline: false,
-            rectangle: true,
-            circle: true,
-            marker: false
-        }
-    });
-    map.addControl(drawControl);
-
-    // Handle the drawn polygon
-    map.on(L.Draw.Event.CREATED, function (event) {
-        var layer = event.layer;
-        drawnItems.clearLayers();
-        drawnItems.addLayer(layer);
-        
-        // Convert polygon to GeoJSON format and store in hidden field
-        document.getElementById("boundary").value = JSON.stringify(layer.toGeoJSON().geometry);
-    });
-});
-
-// AJAX Form Submission
-document.getElementById("farmForm").addEventListener("submit", function(event) {
-    event.preventDefault();
-    
-    var formData = new FormData(this);
-
-    fetch("{% url 'add_farm' farmer.id %}", {
-        method: "POST",
-        body: formData,
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-    })
-    .then(response => response.json())
-    .then(data => {
-        let messageDiv = document.getElementById("message");
-
-        if (data.success) {
-            messageDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <p>✅ Farm created successfully!</p>
-                    <button class="btn btn-primary mt-2" onclick="addAnotherFarm()">➕ Add Another Farm</button>
-                    <button class="btn btn-success mt-2" onclick="proceedToPlantation(${data.farmer_id})">
-                        🌱 Proceed to Plantation
-                    </button>
-                </div>
-            `;
-
-            // Hide the form after successful submission
-            document.getElementById("farmForm").style.display = "none";
-            
-            // Refresh farms list and map
-            fetchExistingFarms();
-        } else {
-            messageDiv.innerHTML = `<p style='color: red;'>❌ Error: ${JSON.stringify(data.errors)}</p>`;
-        }
-    })
-    .catch(error => console.error("AJAX Error:", error));
-});
-
-// Function to add another farm
-function addAnotherFarm() {
-    document.getElementById("farmForm").reset();
-    document.getElementById("message").innerHTML = "";
-    document.getElementById("farmForm").style.display = "block";
-}
-
-// Function to proceed to plantation
-function proceedToPlantation(farmerId) {
-    if (!farmerId) {
-        alert("❌ Farmer ID missing! Cannot proceed to plantation.");
-        return;
-    }
-    window.location.href = `/add-plantation/${farmerId}/`;
-}
-
-// Function to fetch existing farms (available globally)
-function fetchExistingFarms() {
-    fetch(`/api/farms/{{ farmer.id }}/`, {
-        method: "GET",
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Handle farm data...
-        // This would be processed by the DOM content loaded handler
-        // Just trigger a page refresh to reload everything
-        window.location.reload();
-    })
-    .catch(error => console.error("Error fetching farms:", error));
-}
 </script>
 
 {% endblock %}
