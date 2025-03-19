@@ -1,4 +1,4 @@
-const CACHE_NAME = "kisanmitra-cache-v1";
+const CACHE_NAME = "kisanmitra-cache-v2";
 const urlsToCache = [
   "/",
   "/static/css/style.css",

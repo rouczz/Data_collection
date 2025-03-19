@@ -181,11 +181,11 @@ AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 # Media Files
 # DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STORAGES = {
-    "default" : {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage"
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage"  # Keep this for media files
     },
-    "staticfiles":{
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage"
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"  # Use Django's default static file storage
     },
 }
 

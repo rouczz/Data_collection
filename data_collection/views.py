@@ -148,7 +148,7 @@ def add_specie(request, farmer_id):
             specie = form.save(commit=False)
             specie.plantation = plantation
             specie.save()
-            return JsonResponse({"success": True, "specie_id": specie.id})
+            return JsonResponse({"success": True, "specie_id": specie.id, "message": "Species added successfully!", "farmer_id": farmer_id })
         else:
             errors = form.errors
             if not plantation_id:
@@ -344,7 +344,7 @@ def upload_media(request, farmer_id):
 
             # Handle digital signature (base64 string from canvas)
             signature_data = request.POST.get("digital_signature")
-            if signature_data:
+            if signature_data and ';base64,' in signature_data:
                 format, imgstr = signature_data.split(';base64,')
                 ext = format.split('/')[-1]
                 signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
@@ -352,13 +352,23 @@ def upload_media(request, farmer_id):
 
             # Save the media instance
             media.save()
-
-            return JsonResponse({"success": True})
+            
+            print("Successfully uploaded farmer media!")
+            return JsonResponse({
+                "success": True,
+                "message": "Farmer media uploaded successfully!",
+                "farmer_id": farmer_id
+            })
         except Exception as e:
-            return JsonResponse({"success": False, "errors": str(e)})
+            import traceback
+            print(f"Error uploading media: {str(e)}")
+            print(traceback.format_exc())
+            return JsonResponse({
+                "success": False, 
+                "errors": str(e)
+            }, status=400)
     
     return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
-
 
 from dotenv import load_dotenv
 import os

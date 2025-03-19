@@ -3,6 +3,9 @@
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-3 text-primary">Upload Media for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
+    <!-- Success/Error Message Placeholder -->
+    <div id="message"></div>
+    <!-- Media Upload Form -->
     <form id="mediaUploadForm" method="post" enctype="multipart/form-data" class="card p-4 shadow">
         {% csrf_token %}
         <!-- Picture -->
@@ -10,43 +13,43 @@
             <label class="form-label">Farmer's Picture (Capture or Upload)</label>
             <input type="file" id="farmerPicture" name="picture" accept="image/*" capture="environment" class="form-control">
         </div>
-    
+
         <!-- Photo of English EPIC -->
         <div class="mb-3">
             <label class="form-label">Photo of English EPIC</label>
             <input type="file" id="photoOfEnglishEpic" name="photo_of_english_epic" accept="image/*" class="form-control">
         </div>
-    
+
         <!-- Photo of Regional Language EPIC -->
         <div class="mb-3">
             <label class="form-label">Photo of Regional Language EPIC</label>
             <input type="file" id="photoOfRegionalLanguageEpic" name="photo_of_regional_language_epic" accept="image/*" class="form-control">
         </div>
-    
+
         <!-- ID Proof (Front) -->
         <div class="mb-3">
             <label class="form-label">ID Proof (Front)</label>
             <input type="file" id="idProofFront" name="id_proof_front" accept="image/*" class="form-control">
         </div>
-    
+
         <!-- ID Proof (Back) -->
         <div class="mb-3">
             <label class="form-label">ID Proof (Back)</label>
             <input type="file" id="idProofBack" name="id_proof_back" accept="image/*" class="form-control">
         </div>
-    
+
         <!-- Land Ownership Document -->
         <div class="mb-3">
             <label class="form-label">Land Ownership Document (PDF/DOC)</label>
             <input type="file" id="landOwnership" name="land_ownership" accept="application/pdf,.doc,.docx" class="form-control">
         </div>
-    
+
         <!-- Picture of Tree -->
         <div class="mb-3">
             <label class="form-label">Picture of Tree (Capture or Upload)</label>
             <input type="file" id="pictureOfTree" name="picture_of_tree" accept="image/*" capture="environment" class="form-control">
         </div>
-    
+
         <!-- Digital Signature -->
         <div class="mb-3">
             <label class="form-label">Draw Signature</label>
@@ -54,15 +57,13 @@
             <button type="button" id="clearSignature" class="btn btn-sm btn-danger mt-2">Clear</button>
             <input type="hidden" id="signatureData" name="digital_signature">
         </div>
-    
+
         <!-- Submit Button -->
         <button type="submit" class="btn btn-success w-100">Upload Media</button>
     </form>
 </div>
 
-<!-- Signature Pad -->
-
-
+<!-- Signature Pad Script -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const canvas = document.getElementById("signatureCanvas");
@@ -119,13 +120,68 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("signatureData").value = "";
     });
 
-    // Resize canvas dynamically
-    function resizeCanvas() {
-        canvas.width = canvas.offsetWidth * dpr;
-        canvas.height = canvas.offsetHeight * dpr;
-        ctx.scale(dpr, dpr);
-    }
-    window.addEventListener("resize", resizeCanvas);
+    document.getElementById("mediaUploadForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+        
+        const formData = new FormData(this);
+        
+        // Show loading indicator
+        const messageDiv = document.getElementById("message");
+        messageDiv.innerHTML = '<div class="alert alert-info">Uploading files, please wait...</div>';
+        
+        fetch("{% url 'upload_media' farmer.id %}", {
+            method: "POST",
+            body: formData,
+            headers: { 
+                "X-Requested-With": "XMLHttpRequest",
+                // Don't set Content-Type header when sending FormData
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Server Response:", data);
+            
+            if (data.success) {
+                // Clear the form
+                document.getElementById("mediaUploadForm").style.display = "none";
+                
+                // Clear signature canvas
+                const canvas = document.getElementById("signatureCanvas");
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Show success message
+                messageDiv.innerHTML = `
+                    <div class="alert alert-success mt-3">
+                        <p>✅ Farmer media uploaded successfully!</p>
+                        <p>Farmer ID: ${data.farmer_id}</p>
+                        <button id="createNewFarmerBtn" class="btn btn-success mt-2">👨‍🌾 Create New Farmer</button>
+                    </div>
+                `;
+                
+                // Add event listener to the button
+                document.getElementById("createNewFarmerBtn").addEventListener("click", function () {
+                    window.location.href = location.origin + "/";
+                });
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger mt-3">❌ Error: ${data.errors || "Unknown error"}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            messageDiv.innerHTML = `
+                <div class="alert alert-danger mt-3">
+                    <p>❌ An unexpected error occurred: ${error.message}</p>
+                    <p>Please try again.</p>
+                </div>
+            `;
+        });
+    });
 });
 </script>
 {% endblock %}

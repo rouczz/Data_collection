@@ -74,7 +74,7 @@ def send_farm_data(request, farm_id):
 
         # Prepare the payload in the required format
         payload = {
-            "farmer_id": 145529,
+            "farmer": 145529,
             "farm_name": farm.farm_name,
             "area_in_acres": farm.area_in_acres,
             "ownership": farm.ownership,
@@ -93,7 +93,7 @@ def send_farm_data(request, farm_id):
 
         # Send the POST request to the third-party API
         response = requests.post(
-            "https://backend.varahaag.com/api/user/v1/plantation/agfarm/create/",
+            "https://backend.varahaag.com/api/user/v1/farm/create/",
             json=payload,
             headers=headers
         )
@@ -128,7 +128,7 @@ def send_plantation_data(request, plantation_id):
 
         # Prepare the payload in the required format
         payload = {
-            "farm_id": 59675,
+            "farm_id": 152299,
             "kyari_name": plantation.kyari_name,
             "number_of_saplings": plantation.number_of_saplings,
             "area_in_acres": plantation.area_in_acres,
@@ -144,7 +144,7 @@ def send_plantation_data(request, plantation_id):
             'X-Client-ID': x_client_id,  # Replace with your actual X-Client-ID
             'Authorization': f'Bearer {token}'  # Replace with your actual JWT token
         }
-
+        print(payload)
         # Send the POST request to the third-party API
         response = requests.post(
             "https://backend.varahaag.com/api/user/v1/plantation/agkyari/create/",
