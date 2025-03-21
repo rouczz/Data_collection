@@ -380,13 +380,20 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from .models import FarmerMedia
-
+from io import BytesIO
+from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import tempfile
 from io import BytesIO
 from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import tempfile
 import os
+from django.core.files.base import ContentFile
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
 
 def optimize_image(image_file, max_size=(1200, 1200), quality=85):
     """
@@ -413,6 +420,67 @@ def optimize_image(image_file, max_size=(1200, 1200), quality=85):
     optimized.seek(0)
     
     return optimized
+
+def generate_pdf_from_image(image):
+    """
+    Creates a PDF from a single image.
+    Returns a BytesIO object containing the PDF data.
+    """
+    # Create a BytesIO buffer to store the PDF
+    pdf_buffer = BytesIO()
+
+    # Create a PDF canvas
+    c = canvas.Canvas(pdf_buffer, pagesize=letter)
+    width, height = letter  # Width and height of the PDF page
+    
+    try:
+        # Optimize the image first
+        optimized_image = optimize_image(image)
+        
+        # Open the optimized image
+        img = Image.open(optimized_image)
+        img_width, img_height = img.size
+        aspect_ratio = img_height / img_width
+
+        # Calculate new dimensions while maintaining aspect ratio
+        max_width = width * 0.9
+        max_height = height * 0.9
+        
+        new_width = min(max_width, img_width)
+        new_height = new_width * aspect_ratio
+
+        if new_height > max_height:
+            new_height = max_height
+            new_width = new_height / aspect_ratio
+
+        # Save the image to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+            temp_filename = temp_file.name
+            img.save(temp_filename, format="JPEG", quality=85)
+
+        # Draw the image onto the PDF using the temporary file path
+        c.drawImage(
+            temp_filename,
+            30, height - 30 - new_height,
+            width=new_width,
+            height=new_height
+        )
+        
+        # Delete the temporary file after drawing
+        os.unlink(temp_filename)
+        
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logging.error(f"Error processing image: {str(e)}")
+        raise
+
+    # Save the PDF
+    c.save()
+
+    # Move the buffer pointer to the beginning
+    pdf_buffer.seek(0)
+    return pdf_buffer
 
 def generate_pdf_from_images(front_image, back_image):
     """
@@ -493,23 +561,48 @@ def upload_media(request, farmer_id):
             # Create a new FarmerMedia instance
             media = FarmerMedia(farmer=farmer)
 
-            # Process and optimize each image file before saving
+            # Process and optimize profile picture
             if "picture" in request.FILES:
                 optimized = optimize_image(request.FILES["picture"])
                 media.picture.save(f"picture_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
+            # Handle English EPIC
             if "photo_of_english_epic" in request.FILES:
-                optimized = optimize_image(request.FILES["photo_of_english_epic"])
+                english_epic = request.FILES["photo_of_english_epic"]
+                # Create both optimized image and PDF version
+                optimized = optimize_image(english_epic)
                 media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
+                # Generate PDF for English EPIC
+                english_epic.seek(0)  # Reset file pointer
+                pdf_buffer = generate_pdf_from_image(english_epic)
+                media.english_epic_pdf.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                
+            # Handle Regional EPIC
             if "photo_of_regional_language_epic" in request.FILES:
-                optimized = optimize_image(request.FILES["photo_of_regional_language_epic"])
+                regional_epic = request.FILES["photo_of_regional_language_epic"]
+                # Create both optimized image and PDF version
+                optimized = optimize_image(regional_epic)
                 media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
+                # Generate PDF for Regional EPIC
+                regional_epic.seek(0)  # Reset file pointer
+                pdf_buffer = generate_pdf_from_image(regional_epic)
+                media.regional_epic_pdf.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                
+            # Handle Land Ownership document
             if "land_ownership" in request.FILES:
-                optimized = optimize_image(request.FILES["land_ownership"])
+                land_doc = request.FILES["land_ownership"]
+                # Create both optimized image and PDF version
+                optimized = optimize_image(land_doc)
                 media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
+                # Generate PDF for Land Ownership
+                land_doc.seek(0)  # Reset file pointer
+                pdf_buffer = generate_pdf_from_image(land_doc)
+                media.land_ownership_pdf.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                
+            # Handle Tree picture
             if "picture_of_tree" in request.FILES:
                 optimized = optimize_image(request.FILES["picture_of_tree"])
                 media.picture_of_tree.save(f"tree_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
