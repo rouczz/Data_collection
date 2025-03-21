@@ -67,14 +67,18 @@ def send_farm_data(request, farm_id):
         farm = Farm.objects.get(id=farm_id)
 
         # Convert the PolygonField boundary to GeoJSON format
+        # boundary = {
+        #     "coordinates": [list(polygon.coords) for polygon in farm.boundary],
+        #     "type": "Polygon"
+        # }
         boundary = {
-            "coordinates": [list(polygon.coords) for polygon in farm.boundary],
+            "coordinates": list(farm.boundary.coords),
             "type": "Polygon"
         }
 
         # Prepare the payload in the required format
         payload = {
-            "farmer": 145529,
+            "farmer_id": 145529,
             "farm_name": farm.farm_name,
             "area_in_acres": farm.area_in_acres,
             "ownership": farm.ownership,
@@ -93,7 +97,7 @@ def send_farm_data(request, farm_id):
 
         # Send the POST request to the third-party API
         response = requests.post(
-            "https://backend.varahaag.com/api/user/v1/farm/create/",
+            "https://backend.varahaag.com//api/user/v1/plantation/agfarm/create/",
             json=payload,
             headers=headers
         )
@@ -128,9 +132,9 @@ def send_plantation_data(request, plantation_id):
 
         # Prepare the payload in the required format
         payload = {
-            "farm_id": 152299,
+            "farm_id": 59834,
             "kyari_name": plantation.kyari_name,
-            "number_of_saplings": plantation.number_of_saplings,
+            # "number_of_saplings": plantation.number_of_saplings,
             "area_in_acres": plantation.area_in_acres,
             "plantation_model": plantation.plantation_model,
             "year": plantation.year,
@@ -183,15 +187,15 @@ def send_specie_data(request, specie_id):
         # Prepare the payload in the required format
         payload = {
             
-                "kyari": 65923,
-                "specie": 2,
+                "kyari": 66089,
+                "specie": specie.specie_id,
                 "number_of_plants": 10,
                 "specie_type": "MAIN",
-                "plant_spacing": "3_3",
-                "spacing_cr": 1.3,
-                "spacing_cl": 1.3,
-                "spacing_ct": 1.3,
-                "spacing_cb": 1.3,
+                "plant_spacing": specie.plant_spacing,
+                "spacing_cr": specie.spacing_cr,
+                "spacing_cl": specie.spacing_cl,
+                "spacing_ct": specie.spacing_ct,
+                "spacing_cb": specie.spacing_cb,
                 "specie_attributes": {},
                 "metadata": {}
             

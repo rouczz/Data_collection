@@ -4,18 +4,13 @@ import re
 class FarmerForm(forms.ModelForm):
     class Meta:
         model = Farmer
-        fields = ['aadhar', 'first_name', 'last_name', 'mobile_number', 'gender', 
+        fields = [ 'first_name', 'last_name', 'mobile_number', 'gender', 
                   'guardian_name', 'village', 'pincode', 'farmer_consent']  # ✅ Removed `geo_tag`
         widgets = {
             'gender': forms.Select(choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')]),
             # 'farmer_consent': forms.CheckboxInput(),
         }
 
-    def clean_aadhar(self):
-        aadhar = self.cleaned_data.get("aadhar")
-        if not re.fullmatch(r"\d{12}", aadhar):  # ✅ Ensures exactly 12 digits
-            raise forms.ValidationError("Aadhaar number must be a 12-digit integer.")
-        return aadhar
 
     def clean_mobile_number(self):
         mobile_number = self.cleaned_data.get("mobile_number")
@@ -48,7 +43,7 @@ class PlantationForm(forms.ModelForm):
     class Meta:
         model = Plantation
         exclude = ["boundary"]  # We will handle boundary using Leaflet map
-        fields = ['kyari_name', 'number_of_saplings', 'area_in_acres', 'plantation_model', 'year', 'kyari_type', 'is_feasible', 'boundary']
+        fields = ['kyari_name', 'number_of_saplings', 'area_in_acres','year', 'is_feasible', 'boundary']
 
 
 from django import forms
@@ -59,6 +54,10 @@ class SpecieForm(forms.ModelForm):
         model = Specie
         exclude = ["plantation"] 
         fields = "__all__"
+        widgets = {
+            'plantation_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
 
 
 from django import forms

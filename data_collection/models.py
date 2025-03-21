@@ -1,12 +1,11 @@
 from django.contrib.gis.db import models
 
 class Farmer(models.Model):
-    aadhar = models.CharField(max_length=16, unique=True)
     country_id = models.IntegerField(default=2)
     block_id = models.IntegerField()
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    mobile_number = models.CharField(max_length=15)
+    mobile_number = models.CharField(max_length=15,unique=True)
     gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
     guardian_name = models.CharField(max_length=100, blank=True)
     geo_tag = models.PointField()
@@ -39,9 +38,9 @@ class Plantation(models.Model):
     kyari_name = models.CharField(max_length=100)
     number_of_saplings = models.IntegerField()
     area_in_acres = models.FloatField()
-    plantation_model = models.CharField(max_length=50, choices=[('BLOCK', 'Block')], blank=True, null=True)
+    plantation_model = models.CharField(max_length=50, default="BLOCK")
     year = models.IntegerField()
-    kyari_type = models.CharField(max_length=50, choices=[('RETROSPECTIVE', 'Retrospective'), ('PLANTATION', 'Plantation')])
+    kyari_type = models.CharField(max_length=50, default="RETROSPECTIVE")
     is_feasible = models.BooleanField(default=True)
     boundary = models.PolygonField()
     metadata = models.JSONField(default=dict, blank=True, null=True)
@@ -54,6 +53,7 @@ class Specie(models.Model):
     plantation = models.ForeignKey(Plantation, on_delete=models.CASCADE, related_name='species')
     specie_id = models.IntegerField()
     number_of_plants = models.IntegerField()
+    date = models.DateField
     plant_spacing = models.CharField(max_length=10)
     spacing_cr = models.FloatField()
     spacing_cl = models.FloatField()
@@ -61,6 +61,7 @@ class Specie(models.Model):
     spacing_cb = models.FloatField()
     specie_attributes = models.JSONField(default=dict, blank=True, null=True)
     metadata = models.JSONField(default=dict, blank=True, null=True)
+    plantation_date = models.DateField()
 
     def __str__(self):
         return f"Specie {self.specie_id} in {self.plantation.kyari_name}"

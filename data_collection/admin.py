@@ -6,12 +6,12 @@ from .models import Farmer, Farm, Plantation, Specie, GeotaggedSapling, FarmerMe
 @admin.register(Farmer)
 class FarmerAdmin(admin.ModelAdmin):
     list_display = (
-        'id','aadhar', 'country_id', 'block_id', 'first_name', 'last_name', 'mobile_number', 
+        'id', 'country_id', 'block_id', 'first_name', 'last_name', 'mobile_number', 
         'gender', 'guardian_name', 'geo_tag', 'farmer_consent', 'village', 'pincode', 
         'metadata', 'created_at', 
     )
     list_filter = ('gender', 'farmer_consent', 'village')
-    search_fields = ('aadhar', 'first_name', 'last_name', 'mobile_number')
+    search_fields = ('first_name', 'last_name', 'mobile_number')
     readonly_fields = ('created_at',)
 
 @admin.register(Farm)
@@ -27,10 +27,10 @@ class FarmAdmin(admin.ModelAdmin):
 @admin.register(Plantation)
 class PlantationAdmin(admin.ModelAdmin):
     list_display = (
-        'id','farm', 'kyari_name', 'number_of_saplings', 'area_in_acres', 'plantation_model', 
-        'year', 'kyari_type', 'is_feasible', 'boundary', 'metadata', 'kyari_attributes'
+        'id','farm', 'kyari_name', 'number_of_saplings', 'area_in_acres', 
+        'year',  'is_feasible', 'boundary', 'metadata', 'kyari_attributes'
     )
-    list_filter = ('kyari_type', 'is_feasible', 'year')
+    list_filter = ( 'is_feasible', 'year')
     search_fields = ('kyari_name', 'farm__farm_name')
     raw_id_fields = ('farm',)
 
