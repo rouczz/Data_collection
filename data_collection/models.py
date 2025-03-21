@@ -85,16 +85,46 @@ class FarmerMedia(models.Model):
 
     # Media fields
     picture = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
-    photo_of_english_epic = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
-    photo_of_regional_language_epic = models.ImageField(upload_to=farmer_media_path, null=True,blank=True)
-    id_proof_front = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
-    id_proof_back = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
-    land_ownership = models.FileField(upload_to=farmer_media_path)
-    picture_of_tree = models.ImageField(upload_to=farmer_media_path)
+    photo_of_english_epic = models.FileField(upload_to=farmer_media_path, null=True, blank=True)
+    photo_of_regional_language_epic = models.FileField(upload_to=farmer_media_path, null=True, blank=True)
+
+    # ID-related fields
+    ID_TYPE_CHOICES = [
+        ("aadhaar", "Aadhaar Card"),
+        ("driving_license", "Driving License"),
+        ("voter_id", "Voter ID"),
+        ("ration_card", "Ration Card"),
+        ("pan_card", "PAN Card"),
+    ]
+    id_type = models.CharField(
+        max_length=50,
+        choices=ID_TYPE_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Type of ID proof provided by the farmer."
+    )
+    id_number = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="The ID number corresponding to the selected ID type."
+    )
+    id_proof = models.FileField(
+        upload_to=farmer_media_path,
+        null=True,
+        blank=True,
+        help_text="PDF file containing both front and back sides of the ID card."
+    )
+
+    # Other media fields
+    land_ownership = models.FileField(upload_to=farmer_media_path,null=True, blank=True)
+    picture_of_tree = models.ImageField(upload_to=farmer_media_path,null=True, blank=True)
     digital_signature = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
 
     # Timestamp
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+ 
 
     def __str__(self):
         return f"Media for {self.farmer.first_name} {self.farmer.last_name}"

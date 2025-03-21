@@ -186,6 +186,7 @@ def send_specie_data(request, specie_id):
                 "kyari": 65923,
                 "specie": 2,
                 "number_of_plants": 10,
+                "specie_type": "MAIN",
                 "plant_spacing": "3_3",
                 "spacing_cr": 1.3,
                 "spacing_cl": 1.3,

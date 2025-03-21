@@ -8,6 +8,7 @@
     <!-- Media Upload Form -->
     <form id="mediaUploadForm" method="post" enctype="multipart/form-data" class="card p-4 shadow">
         {% csrf_token %}
+        
         <!-- Picture -->
         <div class="mb-3">
             <label class="form-label">Farmer's Picture (Capture or Upload)</label>
@@ -17,26 +18,45 @@
         <!-- Photo of English EPIC -->
         <div class="mb-3">
             <label class="form-label">Photo of English EPIC</label>
-            <input type="file" id="photoOfEnglishEpic" name="photo_of_english_epic" accept="image/*" class="form-control">
+            <input type="file" id="photoOfEnglishEpic" name="photo_of_english_epic" accept="application/pdf" class="form-control">
         </div>
 
         <!-- Photo of Regional Language EPIC -->
         <div class="mb-3">
             <label class="form-label">Photo of Regional Language EPIC</label>
-            <input type="file" id="photoOfRegionalLanguageEpic" name="photo_of_regional_language_epic" accept="image/*" class="form-control">
+            <input type="file" id="photoOfRegionalLanguageEpic" name="photo_of_regional_language_epic" accept="application/pdf" class="form-control">
         </div>
 
-        <!-- ID Proof (Front) -->
+        <!-- ID Type -->
         <div class="mb-3">
-            <label class="form-label">ID Proof (Front)</label>
-            <input type="file" id="idProofFront" name="id_proof_front" accept="image/*" class="form-control">
+            <label class="form-label">ID Card Type</label>
+            <select id="idType" name="id_type" class="form-control">
+                <option value="">-- Select ID Type --</option>
+                <option value="aadhaar">Aadhaar Card</option>
+                <option value="driving_license">Driving License</option>
+                <option value="voter_id">Voter ID</option>
+                <option value="ration_card">Ration Card</option>
+                <option value="pan_card">PAN Card</option>
+            </select>
         </div>
 
-        <!-- ID Proof (Back) -->
+        <!-- ID Number -->
         <div class="mb-3">
-            <label class="form-label">ID Proof (Back)</label>
-            <input type="file" id="idProofBack" name="id_proof_back" accept="image/*" class="form-control">
+            <label class="form-label">ID Number</label>
+            <input type="text" id="idNumber" name="id_number" class="form-control" placeholder="Enter ID Number">
         </div>
+
+        <!-- ID Proof -->
+        <div class="mb-3">
+            <label class="form-label">ID Card Front (Capture or Upload)</label>
+            <input type="file" id="idProofFront" name="id_proof_front" accept="image/*" capture="environment" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">ID Card Back (Capture or Upload)</label>
+            <input type="file" id="idProofBack" name="id_proof_back" accept="image/*" capture="environment" class="form-control">
+        </div>
+      
+    
 
         <!-- Land Ownership Document -->
         <div class="mb-3">
@@ -65,123 +85,132 @@
 
 <!-- Signature Pad Script -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const canvas = document.getElementById("signatureCanvas");
-    const ctx = canvas.getContext("2d");
-
-    // Adjust for high-DPI displays
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = canvas.offsetWidth * dpr;
-    canvas.height = canvas.offsetHeight * dpr;
-    ctx.scale(dpr, dpr);
-
-    let isDrawing = false;
-
-    // Start drawing
-    canvas.addEventListener("mousedown", startDrawing);
-    canvas.addEventListener("touchstart", startDrawing);
-
-    function startDrawing(e) {
-        isDrawing = true;
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    }
-
-    // Continue drawing
-    canvas.addEventListener("mousemove", draw);
-    canvas.addEventListener("touchmove", draw);
-
-    function draw(e) {
-        if (!isDrawing) return;
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
-        ctx.lineTo(x, y);
-        ctx.stroke();
-    }
-
-    // Stop drawing
-    canvas.addEventListener("mouseup", stopDrawing);
-    canvas.addEventListener("touchend", stopDrawing);
-
-    function stopDrawing() {
-        isDrawing = false;
-        ctx.closePath();
-        // Save the signature as a base64-encoded image
-        document.getElementById("signatureData").value = canvas.toDataURL("image/png");
-    }
-
-    // Clear the canvas
-    document.getElementById("clearSignature").addEventListener("click", function () {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        document.getElementById("signatureData").value = "";
-    });
-
-    document.getElementById("mediaUploadForm").addEventListener("submit", function (event) {
-        event.preventDefault();
-        
-        const formData = new FormData(this);
-        
-        // Show loading indicator
-        const messageDiv = document.getElementById("message");
-        messageDiv.innerHTML = '<div class="alert alert-info">Uploading files, please wait...</div>';
-        
-        fetch("{% url 'upload_media' farmer.id %}", {
-            method: "POST",
-            body: formData,
-            headers: { 
-                "X-Requested-With": "XMLHttpRequest",
-                // Don't set Content-Type header when sending FormData
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("Server Response:", data);
-            
-            if (data.success) {
-                // Clear the form
-                document.getElementById("mediaUploadForm").style.display = "none";
-                
-                // Clear signature canvas
-                const canvas = document.getElementById("signatureCanvas");
-                const ctx = canvas.getContext("2d");
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Show success message
-                messageDiv.innerHTML = `
-                    <div class="alert alert-success mt-3">
-                        <p>✅ Farmer media uploaded successfully!</p>
-                        <p>Farmer ID: ${data.farmer_id}</p>
-                        <button id="createNewFarmerBtn" class="btn btn-success mt-2">👨‍🌾 Create New Farmer</button>
+    document.addEventListener("DOMContentLoaded", function () {
+        const canvas = document.getElementById("signatureCanvas");
+        const ctx = canvas.getContext("2d");
+    
+        // Adjust for high-DPI displays
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = canvas.offsetWidth * dpr;
+        canvas.height = canvas.offsetHeight * dpr;
+        ctx.scale(dpr, dpr);
+    
+        let isDrawing = false;
+    
+        // Start drawing
+        canvas.addEventListener("mousedown", startDrawing);
+        canvas.addEventListener("touchstart", startDrawing);
+    
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+    
+        // Continue drawing
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("touchmove", draw);
+    
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+    
+        // Stop drawing
+        canvas.addEventListener("mouseup", stopDrawing);
+        canvas.addEventListener("touchend", stopDrawing);
+    
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.closePath();
+            // Save the signature as a base64-encoded image
+            document.getElementById("signatureData").value = canvas.toDataURL("image/png");
+        }
+    
+        // Clear the canvas
+        document.getElementById("clearSignature").addEventListener("click", function () {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById("signatureData").value = "";
+        });
+    
+        // Form Submission Handler
+        document.getElementById("mediaUploadForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+    
+            const formData = new FormData(this);
+    
+            // Validate required fields
+            const idProofFront = document.getElementById("idProofFront").files[0];
+            const idProofBack = document.getElementById("idProofBack").files[0];
+            const signatureData = document.getElementById("signatureData").value;
+    
+            if (!idProofFront || !idProofBack) {
+                document.getElementById("message").innerHTML = `
+                    <div class="alert alert-danger">
+                        Please upload both the front and back sides of the ID card.
                     </div>
                 `;
-                
-                // Add event listener to the button
-                document.getElementById("createNewFarmerBtn").addEventListener("click", function () {
-                    window.location.href = location.origin + "/";
-                });
-            } else {
-                messageDiv.innerHTML = `<div class="alert alert-danger mt-3">❌ Error: ${data.errors || "Unknown error"}</div>`;
+                return;
             }
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            messageDiv.innerHTML = `
-                <div class="alert alert-danger mt-3">
-                    <p>❌ An unexpected error occurred: ${error.message}</p>
-                    <p>Please try again.</p>
+    
+            // Show loading indicator and hide the form
+            document.getElementById("mediaUploadForm").style.display = "none";
+            document.getElementById("message").innerHTML = `
+                <div class="alert alert-info">
+                    Uploading files, please wait...
                 </div>
             `;
+    
+            // Send AJAX request
+            fetch("{% url 'upload_media' farmer.id %}", {
+                method: "POST",
+                body: formData,
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("message").innerHTML = `
+                        <div class="alert alert-success mt-3">
+                            <p>✅ Media uploaded successfully!</p>
+                            <button id="addNewFarmerBtn" class="btn btn-primary mt-2">👨‍🌾 Add New Farmer</button>
+                        </div>
+                    `;
+    
+                    // Add event listeners for buttons
+                    document.getElementById("addNewFarmerBtn").addEventListener("click", function () {
+                        window.location.href = location.origin + "/";
+                    });
+    
+
+                } else {
+                    document.getElementById("message").innerHTML = `
+                        <div class="alert alert-danger">
+                            Error: ${data.errors || "Unknown error"}
+                        </div>
+                    `;
+                    // Re-enable the form in case of an error
+                    document.getElementById("mediaUploadForm").style.display = "block";
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                document.getElementById("message").innerHTML = `
+                    <div class="alert alert-danger">
+                        An unexpected error occurred. Please try again.
+                    </div>
+                `;
+                // Re-enable the form in case of an error
+                document.getElementById("mediaUploadForm").style.display = "block";
+            });
         });
     });
-});
 </script>
 {% endblock %}

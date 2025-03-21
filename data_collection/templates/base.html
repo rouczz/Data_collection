@@ -10,6 +10,8 @@
     <!-- Link to PWA manifest -->
     <link rel="manifest" href="{% static 'manifest.json' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/idb/7.1.1/idb.min.js"></script>
+
     <style>
         body {
             padding-top: 60px;
@@ -18,17 +20,7 @@
             font-weight: bold;
         }
     </style>
-    <script>
-        (function (c, s, q, u, a, r, e) {
-            c.hj=c.hj||function(){(c.hj.q=c.hj.q||[]).push(arguments)};
-            c._hjSettings = { hjid: a };
-            r = s.getElementsByTagName('head')[0];
-            e = s.createElement('script');
-            e.async = true;
-            e.src = q + c._hjSettings.hjid + u;
-            r.appendChild(e);
-        })(window, document, 'https://static.hj.contentsquare.net/c/csq-', '.js', 5315952);
-    </script>
+
 </head>
 <body>
     <button id="installBtn" class="btn btn-primary">Install App</button>
@@ -82,11 +74,18 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Load Service Worker -->
     <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register("{% static 'service-worker.js' %}")
-        .then(() => console.log("Service Worker Registered"))
-        .catch(err => console.error("Service Worker Failed", err));
-    }
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+              navigator.serviceWorker
+                .register("/static/service-worker.js")
+                .then((registration) => {
+                  console.log("Service Worker registered:", registration);
+                })
+                .catch((error) => {
+                  console.error("Service Worker registration failed:", error);
+                });
+            });
+          }
     </script>
 </body>
 </html>

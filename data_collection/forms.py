@@ -72,18 +72,20 @@ class FarmerMediaForm(forms.ModelForm):
             'picture',
             'photo_of_english_epic',
             'photo_of_regional_language_epic',
-            'id_proof_front',
-            'id_proof_back',
+            'id_type',
+            'id_number',
+            'id_proof',
             'land_ownership',
             'picture_of_tree',
             'digital_signature'
         ]
         widgets = {
             'picture': forms.ClearableFileInput(attrs={"accept": "image/*", "capture": "environment"}),
-            'photo_of_english_epic': forms.ClearableFileInput(attrs={"accept": "image/*"}),
-            'photo_of_regional_language_epic': forms.ClearableFileInput(attrs={"accept": "image/*"}),
-            'id_proof_front': forms.ClearableFileInput(attrs={"accept": "image/*"}),
-            'id_proof_back': forms.ClearableFileInput(attrs={"accept": "image/*"}),
+            'photo_of_english_epic': forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
+            'photo_of_regional_language_epic': forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
+            'id_type': forms.Select(attrs={"class": "form-control"}),
+            'id_number': forms.TextInput(attrs={"class": "form-control", "placeholder": "Enter ID Number"}),
+            'id_proof': forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
             'land_ownership': forms.ClearableFileInput(attrs={"accept": "application/pdf,.doc,.docx"}),
             'picture_of_tree': forms.ClearableFileInput(attrs={"accept": "image/*", "capture": "environment"}),
             'digital_signature': forms.HiddenInput(),  # Hidden input for base64 signature

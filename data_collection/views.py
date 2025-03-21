@@ -315,8 +315,144 @@ def get_plantations_for_farm(request, farm_id):
         "farm_boundary": farm_boundary
     })
 
+# from django.core.files.base import ContentFile
+# import base64
+
+# def upload_media(request, farmer_id):
+#     farmer = get_object_or_404(Farmer, id=farmer_id)
+
+#     if request.method == "POST":
+#         try:
+#             # Create a new FarmerMedia instance
+#             media = FarmerMedia(farmer=farmer)
+
+#             # Handle file uploads
+#             if "picture" in request.FILES:
+#                 media.picture = request.FILES["picture"]
+#             if "photo_of_english_epic" in request.FILES:
+#                 media.photo_of_english_epic = request.FILES["photo_of_english_epic"]
+#             if "photo_of_regional_language_epic" in request.FILES:
+#                 media.photo_of_regional_language_epic = request.FILES["photo_of_regional_language_epic"]
+#             if "id_proof_front" in request.FILES:
+#                 media.id_proof_front = request.FILES["id_proof_front"]
+#             if "id_proof_back" in request.FILES:
+#                 media.id_proof_back = request.FILES["id_proof_back"]
+#             if "land_ownership" in request.FILES:
+#                 media.land_ownership = request.FILES["land_ownership"]
+#             if "picture_of_tree" in request.FILES:
+#                 media.picture_of_tree = request.FILES["picture_of_tree"]
+
+#             # Handle digital signature (base64 string from canvas)
+#             signature_data = request.POST.get("digital_signature")
+#             if signature_data and ';base64,' in signature_data:
+#                 format, imgstr = signature_data.split(';base64,')
+#                 ext = format.split('/')[-1]
+#                 signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
+#                 media.digital_signature.save(f"signature_{farmer.id}.{ext}", signature_file, save=False)
+
+#             # Save the media instance
+#             media.save()
+            
+#             print("Successfully uploaded farmer media!")
+#             return JsonResponse({
+#                 "success": True,
+#                 "message": "Farmer media uploaded successfully!",
+#                 "farmer_id": farmer_id
+#             })
+#         except Exception as e:
+#             import traceback
+#             print(f"Error uploading media: {str(e)}")
+#             print(traceback.format_exc())
+#             return JsonResponse({
+#                 "success": False, 
+#                 "errors": str(e)
+#             }, status=400)
+    
+#     return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
+
+
+
+from django.http import JsonResponse
 from django.core.files.base import ContentFile
 import base64
+from PIL import Image
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from .models import FarmerMedia
+
+from io import BytesIO
+from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+from io import BytesIO
+from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import tempfile
+import os
+
+def generate_pdf_from_images(front_image, back_image):
+    """
+    Combines two images (front and back) into a single PDF file.
+    Returns a BytesIO object containing the PDF data.
+    Handles both InMemoryUploadedFile and TemporaryUploadedFile.
+    """
+    # Create a BytesIO buffer to store the PDF
+    pdf_buffer = BytesIO()
+
+    # Create a PDF canvas
+    c = canvas.Canvas(pdf_buffer, pagesize=letter)
+    width, height = letter  # Width and height of the PDF page
+
+    # Helper function to add an image to the PDF
+    def add_image_to_pdf(image, x, y, max_width, max_height):
+        # Open the image using Pillow
+        img = Image.open(image)
+        img_width, img_height = img.size
+        aspect_ratio = img_height / img_width
+
+        # Calculate new dimensions while maintaining aspect ratio
+        new_width = min(max_width, img_width)
+        new_height = new_width * aspect_ratio
+
+        if new_height > max_height:
+            new_height = max_height
+            new_width = new_height / aspect_ratio
+
+        # Save the image to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
+            temp_filename = temp_file.name
+            img.save(temp_filename, format="PNG")
+
+        # Draw the image onto the PDF using the temporary file path
+        c.drawImage(
+            temp_filename,
+            x, y - new_height,
+            width=new_width,
+            height=new_height
+        )
+        
+        # Delete the temporary file after drawing
+        os.unlink(temp_filename)
+
+    # Add the front image to the first page
+    if front_image:
+        add_image_to_pdf(front_image, 30, height - 30, width * 0.9, height * 0.9)
+
+    # Add the back image to the second page
+    if back_image:
+        c.showPage()  # Start a new page
+        add_image_to_pdf(back_image, 30, height - 30, width * 0.9, height * 0.9)
+
+    # Save the PDF
+    c.save()
+
+    # Move the buffer pointer to the beginning
+    pdf_buffer.seek(0)
+    return pdf_buffer
+
 
 def upload_media(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
@@ -333,14 +469,31 @@ def upload_media(request, farmer_id):
                 media.photo_of_english_epic = request.FILES["photo_of_english_epic"]
             if "photo_of_regional_language_epic" in request.FILES:
                 media.photo_of_regional_language_epic = request.FILES["photo_of_regional_language_epic"]
-            if "id_proof_front" in request.FILES:
-                media.id_proof_front = request.FILES["id_proof_front"]
-            if "id_proof_back" in request.FILES:
-                media.id_proof_back = request.FILES["id_proof_back"]
             if "land_ownership" in request.FILES:
                 media.land_ownership = request.FILES["land_ownership"]
             if "picture_of_tree" in request.FILES:
                 media.picture_of_tree = request.FILES["picture_of_tree"]
+
+            # Handle ID proof generation
+            front_image = request.FILES.get("id_proof_front")
+            back_image = request.FILES.get("id_proof_back")
+            if front_image and back_image:
+                            # Generate PDF from the uploaded images
+                pdf_buffer = generate_pdf_from_images(front_image, back_image)
+                pdf_file = ContentFile(pdf_buffer.read(), name=f"id_proof_{farmer.id}.pdf")
+
+                # Save the PDF to the FarmerMedia model
+                media = FarmerMedia(farmer=farmer)
+                media.id_proof.save(f"id_proof_{farmer.id}.pdf", pdf_file, save=False)
+                media.save()
+
+            # Handle ID type and ID number
+            id_type = request.POST.get("id_type")
+            id_number = request.POST.get("id_number")
+            if id_type:
+                media.id_type = id_type
+            if id_number:
+                media.id_number = id_number
 
             # Handle digital signature (base64 string from canvas)
             signature_data = request.POST.get("digital_signature")
@@ -350,15 +503,16 @@ def upload_media(request, farmer_id):
                 signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
                 media.digital_signature.save(f"signature_{farmer.id}.{ext}", signature_file, save=False)
 
+
             # Save the media instance
             media.save()
-            
-            print("Successfully uploaded farmer media!")
+
             return JsonResponse({
                 "success": True,
                 "message": "Farmer media uploaded successfully!",
                 "farmer_id": farmer_id
             })
+
         except Exception as e:
             import traceback
             print(f"Error uploading media: {str(e)}")
@@ -367,27 +521,5 @@ def upload_media(request, farmer_id):
                 "success": False, 
                 "errors": str(e)
             }, status=400)
-    
+
     return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
-
-from dotenv import load_dotenv
-import os
-
-# Load environment variables from .env file
-load_dotenv()
-
-# AWS S3 Settings
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
-AWS_S3_FILE_OVERWRITE = os.getenv('AWS_S3_FILE_OVERWRITE', False)
-AWS_DEFAULT_ACL = os.getenv('AWS_DEFAULT_ACL', None)
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
-
-# Use S3 as the default storage backend
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
