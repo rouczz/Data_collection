@@ -385,13 +385,34 @@ from io import BytesIO
 from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-
-from io import BytesIO
-from PIL import Image
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 import tempfile
 import os
+
+def optimize_image(image_file, max_size=(1200, 1200), quality=85):
+    """
+    Resizes and optimizes an image to reduce file size.
+    Returns a BytesIO object containing the optimized image.
+    """
+    # Open the image
+    img = Image.open(image_file)
+    
+    # Convert image to RGB if it's not (handles RGBA and other formats)
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    
+    # Resize the image while maintaining aspect ratio
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)
+    
+    # Create a BytesIO object to store the optimized image
+    optimized = BytesIO()
+    
+    # Save the image with reduced quality
+    img.save(optimized, format='JPEG', quality=quality, optimize=True)
+    
+    # Reset the buffer position
+    optimized.seek(0)
+    
+    return optimized
 
 def generate_pdf_from_images(front_image, back_image):
     """
@@ -408,34 +429,44 @@ def generate_pdf_from_images(front_image, back_image):
 
     # Helper function to add an image to the PDF
     def add_image_to_pdf(image, x, y, max_width, max_height):
-        # Open the image using Pillow
-        img = Image.open(image)
-        img_width, img_height = img.size
-        aspect_ratio = img_height / img_width
+        try:
+            # Optimize the image first
+            optimized_image = optimize_image(image)
+            
+            # Open the optimized image
+            img = Image.open(optimized_image)
+            img_width, img_height = img.size
+            aspect_ratio = img_height / img_width
 
-        # Calculate new dimensions while maintaining aspect ratio
-        new_width = min(max_width, img_width)
-        new_height = new_width * aspect_ratio
+            # Calculate new dimensions while maintaining aspect ratio
+            new_width = min(max_width, img_width)
+            new_height = new_width * aspect_ratio
 
-        if new_height > max_height:
-            new_height = max_height
-            new_width = new_height / aspect_ratio
+            if new_height > max_height:
+                new_height = max_height
+                new_width = new_height / aspect_ratio
 
-        # Save the image to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
-            temp_filename = temp_file.name
-            img.save(temp_filename, format="PNG")
+            # Save the image to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+                temp_filename = temp_file.name
+                img.save(temp_filename, format="JPEG", quality=85)
 
-        # Draw the image onto the PDF using the temporary file path
-        c.drawImage(
-            temp_filename,
-            x, y - new_height,
-            width=new_width,
-            height=new_height
-        )
-        
-        # Delete the temporary file after drawing
-        os.unlink(temp_filename)
+            # Draw the image onto the PDF using the temporary file path
+            c.drawImage(
+                temp_filename,
+                x, y - new_height,
+                width=new_width,
+                height=new_height
+            )
+            
+            # Delete the temporary file after drawing
+            os.unlink(temp_filename)
+            
+        except Exception as e:
+            # Log the error for debugging
+            import logging
+            logging.error(f"Error processing image: {str(e)}")
+            raise
 
     # Add the front image to the first page
     if front_image:
@@ -462,30 +493,37 @@ def upload_media(request, farmer_id):
             # Create a new FarmerMedia instance
             media = FarmerMedia(farmer=farmer)
 
-            # Handle file uploads
+            # Process and optimize each image file before saving
             if "picture" in request.FILES:
-                media.picture = request.FILES["picture"]
+                optimized = optimize_image(request.FILES["picture"])
+                media.picture.save(f"picture_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
             if "photo_of_english_epic" in request.FILES:
-                media.photo_of_english_epic = request.FILES["photo_of_english_epic"]
+                optimized = optimize_image(request.FILES["photo_of_english_epic"])
+                media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
             if "photo_of_regional_language_epic" in request.FILES:
-                media.photo_of_regional_language_epic = request.FILES["photo_of_regional_language_epic"]
+                optimized = optimize_image(request.FILES["photo_of_regional_language_epic"])
+                media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
             if "land_ownership" in request.FILES:
-                media.land_ownership = request.FILES["land_ownership"]
+                optimized = optimize_image(request.FILES["land_ownership"])
+                media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
             if "picture_of_tree" in request.FILES:
-                media.picture_of_tree = request.FILES["picture_of_tree"]
+                optimized = optimize_image(request.FILES["picture_of_tree"])
+                media.picture_of_tree.save(f"tree_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
 
             # Handle ID proof generation
             front_image = request.FILES.get("id_proof_front")
             back_image = request.FILES.get("id_proof_back")
             if front_image and back_image:
-                            # Generate PDF from the uploaded images
+                # Generate PDF from the uploaded images
                 pdf_buffer = generate_pdf_from_images(front_image, back_image)
                 pdf_file = ContentFile(pdf_buffer.read(), name=f"id_proof_{farmer.id}.pdf")
 
-                # Save the PDF to the FarmerMedia model
-                media = FarmerMedia(farmer=farmer)
+                # Save the PDF to the media model
                 media.id_proof.save(f"id_proof_{farmer.id}.pdf", pdf_file, save=False)
-                media.save()
 
             # Handle ID type and ID number
             id_type = request.POST.get("id_type")
@@ -502,7 +540,6 @@ def upload_media(request, farmer_id):
                 ext = format.split('/')[-1]
                 signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
                 media.digital_signature.save(f"signature_{farmer.id}.{ext}", signature_file, save=False)
-
 
             # Save the media instance
             media.save()

@@ -8,7 +8,7 @@ class FarmerAdmin(admin.ModelAdmin):
     list_display = (
         'id','aadhar', 'country_id', 'block_id', 'first_name', 'last_name', 'mobile_number', 
         'gender', 'guardian_name', 'geo_tag', 'farmer_consent', 'village', 'pincode', 
-        'metadata', 'created_at', 'consent_form'
+        'metadata', 'created_at', 
     )
     list_filter = ('gender', 'farmer_consent', 'village')
     search_fields = ('aadhar', 'first_name', 'last_name', 'mobile_number')
