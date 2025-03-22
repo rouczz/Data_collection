@@ -1,4 +1,4 @@
-const CACHE_NAME = "kisanmitra-cache-v3";
+const CACHE_NAME = "kisanmitra-cache-v4";
 const urlsToCache = [
   "/",
   "/create_farmer/",
@@ -15,7 +15,13 @@ const urlsToCache = [
   "/static/js/app.js",
   "/static/icons/image.png",
   "/static/icons/image copy.png",
-  "/offline.html"
+  "/offline.html",
+  '/static/css/bootstrap.min.css',
+  '/static/js/bootstrap.bundle.min.js',
+  'https://unpkg.com/leaflet@1.9.3/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.3/dist/leaflet.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/idb/7.1.1/idb.min.js',
+
 ];
 
 // Install Event: Cache Static Assets
