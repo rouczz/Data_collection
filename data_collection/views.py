@@ -22,10 +22,11 @@ def create_farmer(request):
                 farmer.consent_form = request.FILES['consent_form']
                 
             farmer.save()  # ✅ Now save the farmer with the file
-            print("✅ Farmer Saved Successfully with File!")
+            
 
-            return redirect('add_farm', farmer_id=farmer.id)  # Redirect to farm creation
+            # return redirect('add_farm', farmer_id=farmer.id)  # Redirect to farm creation
 
+            return JsonResponse({"success": True,  "farmer_id":farmer.id})  # ✅ Send farmer_id
         else:
             print("❌ Form Errors:", form.errors)  
 

@@ -95,23 +95,25 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        engine='django.contrib.gis.db.backends.postgis'  # Use PostGIS
-    )
-}
-
 # DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-#         'NAME': 'data_collection',
-#         'USER': 'rounak',
-#         'PASSWORD': 'KisanMitra2024',
-#         'HOST': 'kmdatacollection.c9gg2esesquf.ap-south-1.rds.amazonaws.com',
-#         'PORT': '5432',
-#     }
+#     'default': dj_database_url.config(
+#         default=os.getenv('DATABASE_URL'),
+#         engine='django.contrib.gis.db.backends.postgis'  # Use PostGIS
+#     )
 # }
+
+
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': os.getenv('DATABASE_NAME'),
+        'USER': os.getenv('DATABASE_USER'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
+        'HOST': os.getenv('DATABASE_HOST'),
+        'PORT': os.getenv('DATABASE_PORT'),
+    }
+}
 
 # DATABASES = {
 #     'default':  dj_database_url.parse("postgresql://postgres:KisanMitra@2025@db.hwguievdtxdnzihdmahn.supabase.co:5432/postgres", conn_max_age=600, ssl_require=True)

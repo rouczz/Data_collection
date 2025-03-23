@@ -105,20 +105,28 @@
 <!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/idb/7.1.1/idb.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function() {
+        // Initialize map (your existing map code)
+        initMap();
+        
+        // Initialize IndexedDB and other data-related functions
+        initializeDataFunctions();
+    });
+    
+    function initMap() {
         // Base map layers
         var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 22  // ✅ Allow max zoom
+            maxZoom: 22
         });
     
         var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             attribution: '&copy; Google Satellite',
-            maxZoom: 22  // ✅ Higher zoom for better details
+            maxZoom: 22
         });
     
         var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
@@ -143,13 +151,13 @@ document.addEventListener("DOMContentLoaded", function() {
             attribution: '&copy; Esri, HERE, Garmin',
             maxZoom: 22
         });
+        
         var esriClarity = L.tileLayer(
             'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-            maxZoom: 22  // ✅ Allows deeper zoom levels
+            maxZoom: 22
         });       
     
-       
         var map = L.map('map', {
             center: [23.6157, 81.9195], 
             zoom: 6,
@@ -173,139 +181,570 @@ document.addEventListener("DOMContentLoaded", function() {
     
         L.control.layers(baseMaps, overlayMaps).addTo(map);
     
-
-   
+        let marker;
     
-
-    // Immediately Ask for User's Location on Load
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                var lat = position.coords.latitude;
-                var lng = position.coords.longitude;
-
-                // Center map to user's location
-                map.setView([lat, lng], 14);
-
-                // Add marker at user's location
-                marker = L.marker([lat, lng]).addTo(map)
-                    .bindPopup("Your Current Location").openPopup();
-
-                // Store location in form fields
-                document.getElementById("latitude").value = lat;
-                document.getElementById("longitude").value = lng;
-            },
-            function(error) {
-                console.warn("Geolocation error: " + error.message);
-
-                // Handle location denial
-                if (error.code === error.PERMISSION_DENIED) {
-                    alert("Location access denied. Please enable location services.");
-                }
-            },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // High accuracy options
-        );
-    } else {
-        alert("Geolocation is not supported by your browser.");
-    }
-
-    // Allow User to Select a New Location on Click
-    map.on('click', function(e) {
-        var lat = e.latlng.lat;
-        var lng = e.latlng.lng;
-
-        document.getElementById("latitude").value = lat;
-        document.getElementById("longitude").value = lng;
-
-        if (marker) {
-            map.removeLayer(marker);
+        // Immediately Ask for User's Location on Load
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    var lat = position.coords.latitude;
+                    var lng = position.coords.longitude;
+    
+                    // Center map to user's location
+                    map.setView([lat, lng], 14);
+    
+                    // Add marker at user's location
+                    marker = L.marker([lat, lng]).addTo(map)
+                        .bindPopup("Your Current Location").openPopup();
+    
+                    // Store location in form fields
+                    document.getElementById("latitude").value = lat;
+                    document.getElementById("longitude").value = lng;
+                },
+                function(error) {
+                    console.warn("Geolocation error: " + error.message);
+    
+                    // Handle location denial
+                    if (error.code === error.PERMISSION_DENIED) {
+                        alert("Location access denied. Please enable location services.");
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        } else {
+            alert("Geolocation is not supported by your browser.");
         }
-
-        marker = L.marker([lat, lng]).addTo(map)
-            .bindPopup("Selected Location").openPopup();
-    });
-});
-document.addEventListener("DOMContentLoaded", function () {
-    const stateSelect = document.getElementById("stateSelect");
-    const districtSelect = document.getElementById("districtSelect");
-    const blockSelect = document.getElementById("blockSelect");
-
-    // Fetch and populate States
-    fetch("/api/states/")
-        .then(response => response.json())
-        .then(states => {
-            states.forEach(state => {
-                const option = document.createElement("option");
-                option.value = state.id;
-                option.textContent = state.display_name;
-                stateSelect.appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error("Error fetching states:", error);
-            alert("Failed to load states. Please try again later.");
+    
+        // Allow User to Select a New Location on Click
+        map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+    
+            document.getElementById("latitude").value = lat;
+            document.getElementById("longitude").value = lng;
+    
+            if (marker) {
+                map.removeLayer(marker);
+            }
+    
+            marker = L.marker([lat, lng]).addTo(map)
+                .bindPopup("Selected Location").openPopup();
         });
-
-    // Handle State Selection to Load Districts
-    stateSelect.addEventListener("change", function () {
-        const stateId = this.value;
-
-        if (!stateId) {
-            districtSelect.innerHTML = '<option value="">-- Select District --</option>';
-            districtSelect.disabled = true;
-            blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
-            blockSelect.disabled = true;
-            return;
-        }
-
-        // Fetch and populate Districts
-        fetch(`/api/districts/${stateId}/`)
-            .then(response => response.json())
-            .then(districts => {
-                districtSelect.innerHTML = '<option value="">-- Select District --</option>';
-                districts.forEach(district => {
-                    const option = document.createElement("option");
-                    option.value = district.id;
-                    option.textContent = district.display_name;
-                    districtSelect.appendChild(option);
-                });
-                districtSelect.disabled = false;
+    }
+    
+    function initializeDataFunctions() {
+        // First try to load the library
+        loadIdbLibrary()
+            .then(() => {
+                console.log("idb library loaded successfully");
+                return initDatabase();
+            })
+            .then((db) => {
+                console.log("Database initialized successfully");
+                return Promise.all([
+                    fetchAndCacheHierarchyData(db),
+                    populateDropdownsFromCache(db)
+                ]);
+            })
+            .then(() => {
+                console.log("Data loaded and dropdowns populated");
+                setupEventListeners();
             })
             .catch(error => {
-                console.error("Error fetching districts:", error);
-                alert("Failed to load districts. Please try again later.");
+                console.error("Error during initialization:", error);
+                const errorMessage = document.createElement("div");
+                errorMessage.style.color = "red";
+                errorMessage.style.padding = "10px";
+                errorMessage.textContent = "Unable to initialize offline capabilities. Please check your internet connection and refresh the page.";
+                document.body.prepend(errorMessage);
             });
-    });
+    }
+    
+    // Function to load the idb library
+    function loadIdbLibrary() {
+        return new Promise((resolve, reject) => {
+            // Check if already loaded
+            if (typeof idb !== 'undefined') {
+                resolve();
+                return;
+            }
+            
+            console.log("Loading idb library...");
+            
+            // Try to load from multiple CDNs for better reliability
 
-    // Handle District Selection to Load Blocks
-    districtSelect.addEventListener("change", function () {
-        const districtId = this.value;
-
-        if (!districtId) {
-            blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
-            blockSelect.disabled = true;
-            return;
+            
+            function tryNextCdn(index) {
+                if (index >= cdnUrls.length) {
+                    reject(new Error("Failed to load idb library from all sources"));
+                    return;
+                }
+                
+                const script = document.createElement("script");
+                script.src = cdnUrls[index];
+                
+                script.onload = function() {
+                    // Verify the library is actually available
+                    if (typeof idb !== 'undefined') {
+                        resolve();
+                    } else {
+                        console.warn(`idb loaded from ${cdnUrls[index]} but not available in global scope`);
+                        tryNextCdn(index + 1);
+                    }
+                };
+                
+                script.onerror = function() {
+                    console.warn(`Failed to load idb from ${cdnUrls[index]}, trying next source`);
+                    tryNextCdn(index + 1);
+                };
+                
+                document.head.appendChild(script);
+            }
+            
+            // Start with the first CDN
+            tryNextCdn(0);
+        });
+    }
+    
+    // Initialize the IndexedDB database
+    function initDatabase() {
+        if (typeof idb === 'undefined') {
+            return Promise.reject(new Error("idb library not available"));
         }
-
-        // Fetch and populate Blocks
-        fetch(`/api/blocks/${districtId}/`)
-            .then(response => response.json())
-            .then(blocks => {
-                blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
-                blocks.forEach(block => {
-                    const option = document.createElement("option");
-                    option.value = block.id;
-                    option.textContent = block.display_name;
-                    blockSelect.appendChild(option);
+        
+        return idb.openDB('farmerApp', 1, {
+            upgrade(db) {
+                // Create stores for our hierarchical data
+                if (!db.objectStoreNames.contains('states')) {
+                    db.createObjectStore('states', { keyPath: 'id' });
+                }
+                
+                if (!db.objectStoreNames.contains('districts')) {
+                    db.createObjectStore('districts', { keyPath: 'id' });
+                }
+                
+                if (!db.objectStoreNames.contains('blocks')) {
+                    db.createObjectStore('blocks', { keyPath: 'id' });
+                }
+                
+                // Store for offline submissions
+                if (!db.objectStoreNames.contains('offlineFarmers')) {
+                    const farmerStore = db.createObjectStore('offlineFarmers', { 
+                        keyPath: 'id',
+                        autoIncrement: true 
+                    });
+                    farmerStore.createIndex('timestamp', 'timestamp');
+                }
+                
+                // Store for created farmers (will have server-assigned IDs)
+                if (!db.objectStoreNames.contains('farmers')) {
+                    db.createObjectStore('farmers', { keyPath: 'id' });
+                }
+                
+                // Store for farms
+                if (!db.objectStoreNames.contains('farms')) {
+                    const farmStore = db.createObjectStore('farms', { 
+                        keyPath: 'id', 
+                        autoIncrement: true 
+                    });
+                    farmStore.createIndex('farmerId', 'farmer_id');
+                }
+            }
+        });
+    }
+    
+    // Fetch and cache hierarchy data
+    async function fetchAndCacheHierarchyData(db) {
+        try {
+            // Check if we already have states cached
+            const statesCache = await db.getAll('states');
+            console.log("Cached states:", statesCache);
+    
+            if (statesCache.length === 0) {
+                // Fetch from API
+                const response = await fetch('/api/states/');
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+    
+                const states = await response.json();
+                console.log("API Response:", states);
+    
+                // Validate and store states in IndexedDB
+                const tx = db.transaction('states', 'readwrite');
+                for (const state of states) {
+                    if (!state.id || !state.display_name) {
+                        console.warn("Invalid state object:", state);
+                        continue;
+                    }
+                    await tx.store.put(state);
+                }
+                await tx.done;
+    
+                console.log('States cached successfully');
+            } else {
+                console.log("States already cached");
+            }
+        } catch (error) {
+            console.error("Error fetching and caching data:", error);
+            alert("Failed to cache states. Please check the console for details.");
+        }
+    }
+    // Populate dropdowns from cache
+    async function populateDropdownsFromCache(db) {
+        try {
+            // Populate states dropdown
+            const stateSelect = document.getElementById('stateSelect');
+            const states = await db.getAll('states');
+    
+            if (states.length > 0) {
+                stateSelect.innerHTML = '<option value="">-- Select State --</option>';
+                states.forEach(state => {
+                    const option = document.createElement('option');
+                    option.value = state.id;
+                    option.textContent = state.display_name; // Use display_name for dropdown text
+                    stateSelect.appendChild(option);
                 });
-                blockSelect.disabled = false;
-            })
-            .catch(error => {
-                console.error("Error fetching blocks:", error);
-                alert("Failed to load blocks. Please try again later.");
+            } else {
+                // If no cached states, try to fetch them directly
+                try {
+                    const response = await fetch('/api/states/');
+                    if (response.ok) {
+                        const states = await response.json();
+                        stateSelect.innerHTML = '<option value="">-- Select State --</option>';
+                        states.forEach(state => {
+                            const option = document.createElement('option');
+                            option.value = state.id;
+                            option.textContent = state.display_name; // Use display_name for dropdown text
+                            stateSelect.appendChild(option);
+                        });
+    
+                        // Cache them for later
+                        const tx = db.transaction('states', 'readwrite');
+                        for (const state of states) {
+                            await tx.store.put({ id: state.id, display_name: state.display_name });
+                        }
+                        await tx.done;
+                    }
+                } catch (error) {
+                    console.error('Error fetching states:', error);
+                    stateSelect.innerHTML = '<option value="">Error loading states</option>';
+                }
+            }
+        } catch (error) {
+            console.error('Error populating dropdowns:', error);
+        }
+    }
+    // Load districts from cache based on selected state
+    async function loadDistrictsFromCache(stateId) {
+        if (!stateId) return;
+    
+        const districtSelect = document.getElementById('districtSelect');
+        districtSelect.innerHTML = '<option value="">Loading districts...</option>';
+        districtSelect.disabled = true;
+    
+        try {
+            const db = await idb.openDB('farmerApp', 1);
+    
+            // Try to get districts from cache first
+            const districts = await db.getAll('districts');
+            const stateDistricts = districts.filter(d => d.state_id == stateId);
+    
+            if (stateDistricts.length > 0) {
+                // Use cached districts
+                populateDistrictDropdown(stateDistricts);
+            } else {
+                // Fetch from API and cache
+                try {
+                    const response = await fetch(`/api/districts/${stateId}`);
+                    if (response.ok) {
+                        const apiDistricts = await response.json();
+                
+                        if (!Array.isArray(apiDistricts) || apiDistricts.length === 0) {
+                            throw new Error('No districts found for the selected state');
+                        }
+                
+                        // Normalize and process districts
+                        const normalizedDistricts = apiDistricts.map(district => ({
+                            id: district.id,
+                            name: district.display_name,
+                            state_id: district.state_id,
+                            country_id: district.country_id
+                        }));
+                
+                        // Cache and populate dropdown
+                        const tx = db.transaction('districts', 'readwrite');
+                        for (const district of normalizedDistricts) {
+                            await tx.store.put(district);
+                        }
+                        await tx.done;
+                
+                        populateDistrictDropdown(normalizedDistricts);
+                    } else {
+                        throw new Error('API returned an error response');
+                    }
+                } catch (error) {
+                    console.error('Error fetching districts:', error);
+                    districtSelect.innerHTML = '<option value="">Error loading districts</option>';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading districts from cache:', error);
+            districtSelect.innerHTML = '<option value="">Error loading districts</option>';
+        }
+    }
+    // Helper function to populate district dropdown
+    function populateDistrictDropdown(districts) {
+        const districtSelect = document.getElementById('districtSelect');
+        districtSelect.innerHTML = '<option value="">-- Select District --</option>';
+        districts.forEach(district => {
+            const option = document.createElement('option');
+            option.value = district.id;
+            option.textContent = district.display_name || district.name; // Handle both fields
+            districtSelect.appendChild(option);
+        });
+        districtSelect.disabled = false;
+    }
+    
+    // Load blocks from cache based on selected district
+    async function loadBlocksFromCache(districtId) {
+        if (!districtId) return;
+        
+        const blockSelect = document.getElementById('blockSelect');
+        blockSelect.innerHTML = '<option value="">Loading blocks...</option>';
+        blockSelect.disabled = true;
+        
+        try {
+            const db = await idb.openDB('farmerApp', 1);
+            
+            // Try to get blocks from cache first
+            const blocks = await db.getAll('blocks');
+            const districtBlocks = blocks.filter(b => b.district_id == districtId);
+            
+            if (districtBlocks.length > 0) {
+                // We have cached blocks for this district
+                populateBlockDropdown(districtBlocks);
+            } else {
+                // Fetch from API and cache
+                try {
+                    const response = await fetch(`/api/blocks/${districtId}`);
+                    if (response.ok) {
+                        const blocks = await response.json();
+                        
+                        // Cache the blocks
+                        const tx = db.transaction('blocks', 'readwrite');
+                        for (const block of blocks) {
+                            await tx.store.put(block);
+                        }
+                        await tx.done;
+                        
+                        // Populate dropdown
+                        populateBlockDropdown(blocks);
+                    } else {
+                        throw new Error('Failed to fetch blocks');
+                    }
+                } catch (error) {
+                    console.error('Error fetching blocks:', error);
+                    blockSelect.innerHTML = '<option value="">Error loading blocks</option>';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading blocks from cache:', error);
+            blockSelect.innerHTML = '<option value="">Error loading blocks</option>';
+        }
+    }
+    
+    // Helper function to populate block dropdown
+    function populateBlockDropdown(blocks) {
+        const blockSelect = document.getElementById('blockSelect');
+        blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
+    
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block.id;
+            option.textContent = block.display_name // Use display_name if available, fallback to name
+            blockSelect.appendChild(option);
+        });
+    
+        blockSelect.disabled = false;
+    }
+    // Save farmer data offline
+    async function saveFarmerOffline(formData) {
+        try {
+            const db = await idb.openDB('farmerApp', 1);
+            
+            // Convert FormData to a plain object
+            const farmerData = {};
+            formData.forEach((value, key) => {
+                farmerData[key] = value;
             });
-    });
-});
+            
+            // Add timestamp
+            farmerData.timestamp = new Date().toISOString();
+            farmerData.synced = false;
+            
+            // Store in IndexedDB
+            const tx = db.transaction('offlineFarmers', 'readwrite');
+            const id = await tx.store.add(farmerData);
+            await tx.done;
+            
+            console.log('Farmer saved offline with local ID:', id);
+            return id;
+        } catch (error) {
+            console.error('Error saving farmer offline:', error);
+            throw error;
+        }
+    }
+    
+    // Sync offline farmers when online
+    async function syncOfflineFarmers() {
+        try {
+            const db = await idb.openDB('farmerApp', 1);
+            
+            // Get all unsynced farmers
+            const tx = db.transaction('offlineFarmers', 'readonly');
+            const unsyncedFarmers = await tx.store.getAll();
+            await tx.done;
+            
+            const unsynced = unsyncedFarmers.filter(farmer => !farmer.synced);
+            
+            if (unsynced.length === 0) {
+                console.log('No farmers to sync');
+                return;
+            }
+            
+            console.log(`Attempting to sync ${unsynced.length} farmers`);
+            
+            for (const farmer of unsynced) {
+                try {
+                    // Convert back to FormData
+                    const formData = new FormData();
+                    for (const key in farmer) {
+                        if (key !== 'id' && key !== 'timestamp' && key !== 'synced') {
+                            formData.append(key, farmer[key]);
+                        }
+                    }
+                    
+                    // Send to server
+                    const response = await fetch('/', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log(`Synced farmer ${farmer.id} -> server ID: ${result.id}`);
+                        
+                        // Update offlineFarmers to mark as synced
+                        const updateTx = db.transaction('offlineFarmers', 'readwrite');
+                        const storedFarmer = await updateTx.store.get(farmer.id);
+                        storedFarmer.synced = true;
+                        storedFarmer.server_id = result.id;
+                        await updateTx.store.put(storedFarmer);
+                        await updateTx.done;
+                        
+                        // Also store in farmers store with server ID
+                        const farmerTx = db.transaction('farmers', 'readwrite');
+                        await farmerTx.store.put({
+                            id: result.id,
+                            ...farmer,
+                            local_id: farmer.id
+                        });
+                        await farmerTx.done;
+                    } else {
+                        console.error(`Failed to sync farmer ${farmer.id}:`, await response.text());
+                    }
+                } catch (error) {
+                    console.error(`Error syncing farmer ${farmer.id}:`, error);
+                }
+            }
+        } catch (error) {
+            console.error('Error during sync:', error);
+        }
+    }
+    
+    // Setup event listeners
+    function setupEventListeners() {
+        // Set up event listeners for dropdowns using cached data
+        const stateSelect = document.getElementById("stateSelect");
+        const districtSelect = document.getElementById("districtSelect");
+        
+        stateSelect.addEventListener("change", function() {
+            loadDistrictsFromCache(this.value);
+            // Reset block dropdown
+            document.getElementById("blockSelect").innerHTML = '<option value="">-- Select Block --</option>';
+            document.getElementById("blockSelect").disabled = true;
+        });
+        
+        districtSelect.addEventListener("change", function() {
+            loadBlocksFromCache(this.value);
+        });
+        
+        // Handle form submission
+        const farmerForm = document.querySelector('form');
+        farmerForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = new FormData(this);
+            
+            // Check if online
+            if (navigator.onLine) {
+                // Try to submit normally
+                try {
+                    const response = await fetch(this.action || '/', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        alert('Farmer created successfully!');
+                        
+                        // Store the created farmer in IndexedDB
+                        const db = await idb.openDB('farmerApp', 1);
+                        const tx = db.transaction('farmers', 'readwrite');
+                        
+                        // Convert FormData to a plain object
+                        const farmerData = {};
+                        formData.forEach((value, key) => {
+                            farmerData[key] = value;
+                        });
+                        
+                        await tx.store.put({
+                            id: result.id,
+                            ...farmerData
+                        });
+                        await tx.done;
+                        
+                        // Redirect to farm creation
+                        window.location.href = `/add_farm/${result.id}/`;
+                    } else {
+                        alert('Error creating farmer. Saving offline.');
+                        const localId = await saveFarmerOffline(formData);
+                        alert(`Saved offline (ID: ${localId}). Will sync when online.`);
+                    }
+                } catch (error) {
+                    console.error('Error submitting form:', error);
+                    const localId = await saveFarmerOffline(formData);
+                    alert(`Network error. Saved offline (ID: ${localId}).`);
+                }
+            } else {
+                // Save offline
+                const localId = await saveFarmerOffline(formData);
+                alert(`You are offline. Saved locally (ID: ${localId}). Will sync when online.`);
+                
+                // Redirect to farm creation with local ID
+                window.location.href = `/add_farm/${localId}/`;
+            }
+        });
+        
+        // Check for connectivity changes to sync
+        window.addEventListener('online', async function() {
+            console.log('Back online. Attempting to sync data...');
+            await syncOfflineFarmers();
+        });
+    }
 </script>
 
 {% endblock %}
