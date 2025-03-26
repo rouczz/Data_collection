@@ -594,12 +594,12 @@ def upload_media(request, farmer_id):
                 land_doc = request.FILES["land_ownership"]
                 # Create both optimized image and PDF version
                 optimized = optimize_image(land_doc)
-                media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                # media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
                 # Generate PDF for Land Ownership
                 land_doc.seek(0)  # Reset file pointer
                 pdf_buffer = generate_pdf_from_image(land_doc)
-                media.land_ownership_pdf.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Tree picture
             if "picture_of_tree" in request.FILES:

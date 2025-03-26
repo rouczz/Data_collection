@@ -124,12 +124,33 @@
                 
                 // Load existing plantations for this farm
                 loadPlantationsForFarm(farmId);
-    
+                await loadFarmsIntoDropdown();
                 // Setup drawing tools with validation
                 setupDrawingTools(boundary);
             }
         });
+        async function loadFarmsIntoDropdown() {
+            try {
+                const db = await idb.openDB('farmerApp', 1);
+                const tx = db.transaction('farms', 'readonly');
+                const farms = await tx.store.getAll();
+                await tx.done;
         
+                const farmSelect = document.getElementById("farmSelect");
+                farmSelect.innerHTML = `<option value="">-- Select Farm --</option>`;
+        
+                farms.forEach(farm => {
+                    const option = document.createElement("option");
+                    option.value = farm.id;
+                    option.textContent = farm.farm_name;
+                    option.setAttribute("data-boundary", JSON.stringify(farm.boundary));
+                    farmSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading farms into dropdown:", error);
+                alert("Failed to load farms. Please refresh the page.");
+            }
+        }
         // Load existing plantations for a farm
         function loadPlantationsForFarm(farmId) {
             // Clear existing plantation boundaries

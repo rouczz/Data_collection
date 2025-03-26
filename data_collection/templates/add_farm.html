@@ -41,7 +41,7 @@
 <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         // Base map layers (unchanged)
@@ -223,7 +223,39 @@
                 }
             });
         }
+        fetchAndDisplayFarms()
+
+        async function fetchAndDisplayFarms() {
+            try {
+                const db = await idb.openDB('farmerApp', 1);
         
+                // Fetch all farms
+                const tx = db.transaction('farms', 'readonly');
+                const farms = await tx.store.getAll();
+                await tx.done;
+        
+                // Display farms on the map
+                farms.forEach(farm => {
+                    const farmBoundary = farm.boundary;
+                    const layer = L.geoJSON(farmBoundary, {
+                        color: 'blue',
+                        fillColor: 'rgba(0, 0, 255, 0.3)',
+                        weight: 2
+                    });
+        
+                    layer.bindPopup(`<strong>${farm.farm_name}</strong><br>Status: ${farm.synced ? 'Synced' : 'Unsynced'}`);
+                    layer.addTo(map);
+                });
+        
+                // Fit map to show all farms
+                if (farms.length > 0) {
+                    const bounds = L.featureGroup(farms.map(farm => L.geoJSON(farm.boundary))).getBounds();
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            } catch (error) {
+                console.error('Error fetching and displaying farms:', error);
+            }
+        }
         // Try to get the user's location
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -384,51 +416,105 @@
             document.getElementById('intersection-warning').style.display = 'none';
         });
     });
+    async function saveFarmOffline(farmData) {
+        try {
+            const db = await idb.openDB('farmerApp', 1);
+    
+            // Store the farm data in IndexedDB
+            const tx = db.transaction('farms', 'readwrite');
+            const localId = await tx.store.add(farmData);
+            await tx.done;
+    
+            console.log('Farm saved offline with local ID:', localId);
+            return localId;
+        } catch (error) {
+            console.error('Error saving farm offline:', error);
+            throw error;
+        }
+    }
     
     // AJAX Form Submission
-    document.getElementById("farmForm").addEventListener("submit", function(event) {
-        event.preventDefault(); // Prevent default form submission
+    document.getElementById("farmForm").addEventListener("submit", async function(event) {
+        event.preventDefault();
     
-        // Double-check that boundary exists and doesn't intersect
-        if (!document.getElementById("boundary").value) {
-            document.getElementById("message").innerHTML = `
-                <div class="alert alert-danger">
-                    Please draw a farm boundary on the map.
-                </div>
-            `;
+        // Get form data
+        const formData = new FormData(this);
+    
+        // Check if a boundary is drawn
+        const boundary = document.getElementById("boundary").value;
+        if (!boundary) {
+            document.getElementById("message").innerHTML = `<div class="alert alert-danger">Please draw a farm boundary on the map.</div>`;
             return;
         }
     
-        var formData = new FormData(this);
-        fetch("{% url 'add_farm' farmer.id %}", {
-            method: "POST",
-            body: formData,
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-        })
-        .then(response => response.json())
-        .then(data => {
-            let messageDiv = document.getElementById("message");
-            if (data.success) {
-                messageDiv.innerHTML = `
-                    <div class="alert alert-success">
-                        <p>✅ Farm created successfully!</p>
-                        <button class="btn btn-primary mt-2" onclick="addAnotherFarm()">➕ Add Another Farm</button>
-                        <button class="btn btn-success mt-2" onclick="proceedToPlantation(${data.farmer_id})">
-                            🌱 Proceed to Plantation
-                        </button>
-                    </div>
-                `;
-                // Hide the form after successful submission
-                document.getElementById("farmForm").style.display = "none";
-                // Refresh farms list and map
-                fetchExistingFarms();
-            } else {
-                messageDiv.innerHTML = `<p style='color: red;'>❌ Error: ${JSON.stringify(data.errors)}</p>`;
-            }
-        })
-        .catch(error => console.error("AJAX Error:", error));
-    });
+        // Convert FormData to a plain object
+        const farmData = {};
+        formData.forEach((value, key) => {
+            farmData[key] = value;
+        });
     
+        // Add boundary and metadata
+        farmData.boundary = JSON.parse(boundary); // Parse GeoJSON boundary
+        farmData.timestamp = new Date().toISOString();
+        farmData.synced = false; // Mark as unsynced
+    
+        // Extract farmer ID from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const farmerId = urlParams.get('farmer_id') || urlParams.get('local_farmer_id');
+        farmData.farmer_id = farmerId;
+    
+        // Check if online
+        if (navigator.onLine) {
+            try {
+                // Try to submit to the server
+                const response = await fetch(`/add_farm/${farmerId}/`, {
+                    method: 'POST',
+                    body: formData
+                });
+    
+                if (response.ok) {
+                    const result = await response.json();
+    
+                    // Display success message with buttons
+                    document.getElementById("message").innerHTML = `
+                        <div class="alert alert-success">
+                            <p>✅ Farm created successfully!</p>
+                            <button class="btn btn-primary mt-2" onclick="addAnotherFarm()">➕ Add Another Farm</button>
+                            <button class="btn btn-success mt-2" onclick="proceedToPlantation(${farmerId})">
+                                🌱 Proceed to Plantation
+                            </button>
+                        </div>
+                    `;
+    
+                    // Store the created farm in IndexedDB
+                    const db = await idb.openDB('farmerApp', 1);
+                    const tx = db.transaction('farms', 'readwrite');
+                    await tx.store.put({
+                        id: result.farm_id,
+                        ...farmData
+                    });
+                    await tx.done;
+    
+                    // Refresh the farms list
+                    await fetchAndDisplayFarms();
+                } else {
+                    alert('Error creating farm. Saving offline.');
+                    await saveFarmOffline(farmData);
+                    await fetchAndDisplayFarms();
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                alert('Network error. Saving farm offline.');
+                await saveFarmOffline(farmData);
+                await fetchAndDisplayFarms();
+            }
+        } else {
+            // Save offline
+            alert('You are offline. Saving farm locally.');
+            await saveFarmOffline(farmData);
+            await fetchAndDisplayFarms();
+        }
+    });
     // Function to add another farm
     function addAnotherFarm() {
         document.getElementById("farmForm").reset();

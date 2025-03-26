@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - KisanMitra</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+        }
+        .offline-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: #6c757d;
+        }
+        h1 {
+            color: #495057;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+        .btn-primary {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .cached-pages {
+            text-align: left;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="icon">📶</div>
+        <h1>You're Offline</h1>
+        <p>It looks like you don't have an internet connection right now. Some features may be limited until you're back online.</p>
+        
+        <button class="btn btn-primary" id="retry-button">Retry Connection</button>
+        
+        <div class="cached-pages mt-4">
+            <h4>Available Pages:</h4>
+            <ul id="available-pages" class="list-group">
+                <li class="list-group-item"><a href="/">Home Page</a></li>
+                <li class="list-group-item"><a href="/dashboard/">Dashboard</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Check if we're online periodically
+        function checkOnlineStatus() {
+            if (navigator.onLine) {
+                window.location.reload();
+            }
+        }
+        
+        // Check online status every 5 seconds
+        setInterval(checkOnlineStatus, 5000);
+        
+        // Add retry button functionality
+        document.getElementById('retry-button').addEventListener('click', function() {
+            window.location.reload();
+        });
+        
+        // Dynamically list cached pages
+        if ('caches' in window) {
+            caches.open('kisanmitra-cache-v4').then(cache => {
+                cache.keys().then(keys => {
+                    const htmlPages = keys.filter(request => {
+                        return request.url.endsWith('/') || 
+                               request.headers.get('accept').includes('text/html');
+                    });
+                    
+                    const availableList = document.getElementById('available-pages');
+                    availableList.innerHTML = '';
+                    
+                    if (htmlPages.length > 0) {
+                        htmlPages.forEach(request => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item';
+                            
+                            const a = document.createElement('a');
+                            const url = new URL(request.url);
+                            a.href = url.pathname;
+                            a.textContent = url.pathname || 'Home Page';
+                            
+                            li.appendChild(a);
+                            availableList.appendChild(li);
+                        });
+                    } else {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.textContent = 'No cached pages available.';
+                        availableList.appendChild(li);
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

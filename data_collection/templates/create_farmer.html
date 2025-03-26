@@ -311,43 +311,56 @@
         if (typeof idb === 'undefined') {
             return Promise.reject(new Error("idb library not available"));
         }
-        
+    
         return idb.openDB('farmerApp', 1, {
             upgrade(db) {
-                // Create stores for our hierarchical data
+                // Store for States, Districts, and Blocks (for offline location data)
                 if (!db.objectStoreNames.contains('states')) {
                     db.createObjectStore('states', { keyPath: 'id' });
                 }
-                
+    
                 if (!db.objectStoreNames.contains('districts')) {
                     db.createObjectStore('districts', { keyPath: 'id' });
                 }
-                
+    
                 if (!db.objectStoreNames.contains('blocks')) {
                     db.createObjectStore('blocks', { keyPath: 'id' });
                 }
-                
-                // Store for offline submissions
-                if (!db.objectStoreNames.contains('offlineFarmers')) {
-                    const farmerStore = db.createObjectStore('offlineFarmers', { 
-                        keyPath: 'id',
-                        autoIncrement: true 
-                    });
+    
+                // Store for Farmers
+                if (!db.objectStoreNames.contains('farmers')) {
+                    const farmerStore = db.createObjectStore('farmers', { keyPath: 'id', autoIncrement: true });
                     farmerStore.createIndex('timestamp', 'timestamp');
                 }
-                
-                // Store for created farmers (will have server-assigned IDs)
-                if (!db.objectStoreNames.contains('farmers')) {
-                    db.createObjectStore('farmers', { keyPath: 'id' });
+    
+                // Store for Offline Farmers (waiting for sync)
+                if (!db.objectStoreNames.contains('offlineFarmers')) {
+                    const offlineFarmerStore = db.createObjectStore('offlineFarmers', { keyPath: 'id', autoIncrement: true });
+                    offlineFarmerStore.createIndex('timestamp', 'timestamp');
                 }
-                
-                // Store for farms
+    
+                // Store for Farms (linked to farmers)
                 if (!db.objectStoreNames.contains('farms')) {
-                    const farmStore = db.createObjectStore('farms', { 
-                        keyPath: 'id', 
-                        autoIncrement: true 
-                    });
-                    farmStore.createIndex('farmerId', 'farmer_id');
+                    const farmStore = db.createObjectStore('farms', { keyPath: 'id', autoIncrement: true });
+                    farmStore.createIndex('farmerId', 'farmer_id');  // Relate farm to farmer
+                }
+    
+                // Store for Plantations (linked to farms)
+                if (!db.objectStoreNames.contains('plantations')) {
+                    const plantationStore = db.createObjectStore('plantations', { keyPath: 'id', autoIncrement: true });
+                    plantationStore.createIndex('farmId', 'farm_id');  // Relate plantation to farm
+                }
+    
+                // Store for Species (linked to plantations)
+                if (!db.objectStoreNames.contains('species')) {
+                    const speciesStore = db.createObjectStore('species', { keyPath: 'id', autoIncrement: true });
+                    speciesStore.createIndex('plantationId', 'plantation_id');  // Relate species to plantation
+                }
+    
+                // Store for Media (linked to farmer, farm, or species)
+                if (!db.objectStoreNames.contains('media')) {
+                    const mediaStore = db.createObjectStore('media', { keyPath: 'id', autoIncrement: true });
+                    mediaStore.createIndex('farmerId', 'farmer_id');
                 }
             }
         });
@@ -691,7 +704,10 @@
             // Check if online
             if (navigator.onLine) {
                 // Try to submit normally
+                console.log("Is online:", navigator.onLine);
                 try {
+                    const url = this.action || '/';
+                    console.log("Submitting form to:", url);
                     const response = await fetch(this.action || '/', {
                         method: 'POST',
                         body: formData
@@ -712,13 +728,13 @@
                         });
                         
                         await tx.store.put({
-                            id: result.id,
+                            id: result.farmer_id,
                             ...farmerData
                         });
                         await tx.done;
                         
                         // Redirect to farm creation
-                        window.location.href = `/add_farm/${result.id}/`;
+                        window.location.href = `/add_farm/${result.farmer_id}/`;
                     } else {
                         alert('Error creating farmer. Saving offline.');
                         const localId = await saveFarmerOffline(formData);

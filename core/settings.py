@@ -26,9 +26,9 @@ SECRET_KEY = 'django-insecure-@pb$9gb8n54c^@v(03()_*kvk_75^$_e=-ree8c3n2ygi$y%l6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["data-collection-0o3b.onrender.com",'127.0.0.1', "data-collection-rzpi.onrender.com"]
+ALLOWED_HOSTS = ["data-collection-0o3b.onrender.com",'127.0.0.1', "data-collection-rzpi.onrender.com","*"]
 
-
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20 MB
 # Application definition
 
 INSTALLED_APPS = [
@@ -95,25 +95,25 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
-# DATABASES = {
-#     'default': dj_database_url.config(
-#         default=os.getenv('DATABASE_URL'),
-#         engine='django.contrib.gis.db.backends.postgis'  # Use PostGIS
-#     )
-# }
-
-
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': os.getenv('DATABASE_NAME'),
-        'USER': os.getenv('DATABASE_USER'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-        'HOST': os.getenv('DATABASE_HOST'),
-        'PORT': os.getenv('DATABASE_PORT'),
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        engine='django.contrib.gis.db.backends.postgis'  # Use PostGIS
+    )
 }
+
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.contrib.gis.db.backends.postgis',
+#         'NAME': os.getenv('DATABASE_NAME'),
+#         'USER': os.getenv('DATABASE_USER'),
+#         'PASSWORD': os.getenv('DATABASE_PASSWORD'),
+#         'HOST': os.getenv('DATABASE_HOST'),
+#         'PORT': os.getenv('DATABASE_PORT'),
+#     }
+# }
 
 # DATABASES = {
 #     'default':  dj_database_url.parse("postgresql://postgres:KisanMitra@2025@db.hwguievdtxdnzihdmahn.supabase.co:5432/postgres", conn_max_age=600, ssl_require=True)
