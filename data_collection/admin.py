@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Farmer, Farm, Plantation, Specie, GeotaggedSapling, FarmerMedia
+from .models import Farmer, Farm, Plantation, Specie, FarmerMedia
 
 # Register your models here.
 
@@ -44,12 +44,6 @@ class SpecieAdmin(admin.ModelAdmin):
     search_fields = ('specie_id', 'plantation__kyari_name')
     raw_id_fields = ('plantation',)
 
-@admin.register(GeotaggedSapling)
-class GeotaggedSaplingAdmin(admin.ModelAdmin):
-    list_display = ('plantation', 'specie', 'geo_tag', 'metadata')
-    list_filter = ('specie',)
-    search_fields = ('plantation__kyari_name', 'specie__specie_id')
-    raw_id_fields = ('plantation', 'specie')
 
 from django.contrib import admin
 from .models import FarmerMedia

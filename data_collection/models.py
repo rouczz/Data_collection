@@ -14,7 +14,7 @@ class Farmer(models.Model):
     pincode = models.CharField(max_length=10)
     metadata = models.JSONField(default=dict, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    vaarha_id = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"  
@@ -29,6 +29,7 @@ class Farm(models.Model):
     boundary_method = models.CharField(max_length=10, choices=[('Drawing', 'Drawing'), ('Tapping', 'Tapping')])
     boundary = models.PolygonField()
     metadata = models.JSONField(default=dict, blank=True, null=True)
+    vaarha_id = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.farm_name
@@ -45,6 +46,7 @@ class Plantation(models.Model):
     boundary = models.PolygonField()
     metadata = models.JSONField(default=dict, blank=True, null=True)
     kyari_attributes = models.JSONField(default=dict, blank=True, null=True)
+    vaarha_id = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.kyari_name
@@ -62,18 +64,19 @@ class Specie(models.Model):
     specie_attributes = models.JSONField(default=dict, blank=True, null=True)
     metadata = models.JSONField(default=dict, blank=True, null=True)
     plantation_date = models.DateField()
+    vaarha_id = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return f"Specie {self.specie_id} in {self.plantation.kyari_name}"
 
-class GeotaggedSapling(models.Model):
-    plantation = models.ForeignKey(Plantation, on_delete=models.CASCADE, related_name='saplings')
-    specie = models.ForeignKey(Specie, on_delete=models.CASCADE, related_name='saplings')
-    geo_tag = models.PointField()
-    metadata = models.JSONField(default=dict, blank=True, null=True)
+# class GeotaggedSapling(models.Model):
+#     plantation = models.ForeignKey(Plantation, on_delete=models.CASCADE, related_name='saplings')
+#     specie = models.ForeignKey(Specie, on_delete=models.CASCADE, related_name='saplings')
+#     geo_tag = models.PointField()
+#     metadata = models.JSONField(default=dict, blank=True, null=True)
 
-    def __str__(self):
-        return f"Sapling in {self.plantation.kyari_name}"
+#     def __str__(self):
+#         return f"Sapling in {self.plantation.kyari_name}"
 
 
 def farmer_media_path(instance, filename):
@@ -121,6 +124,7 @@ class FarmerMedia(models.Model):
     land_ownership = models.FileField(upload_to=farmer_media_path,null=True, blank=True)
     picture_of_tree = models.ImageField(upload_to=farmer_media_path,null=True, blank=True)
     digital_signature = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    vaarha_id = models.IntegerField(null=True, blank=True)
 
     # Timestamp
     uploaded_at = models.DateTimeField(auto_now_add=True)

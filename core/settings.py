@@ -105,11 +105,11 @@ DATABASES = {
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-#         'NAME': 'data_collection',
-#         'USER': 'rounak',
-#         'PASSWORD': 'KisanMitra2024',
-#         'HOST': 'kmdatacollection.c9gg2esesquf.ap-south-1.rds.amazonaws.com',
-#         'PORT': '5432',
+#         'NAME': os.getenv('DATABASE_NAME'),
+#         'USER': os.getenv('DATABASE_USER'),
+#         'PASSWORD': os.getenv('DATABASE_PASSWORD'),
+#         'HOST': os.getenv('DATABASE_HOST'),
+#         'PORT': os.getenv('DATABASE_PORT'),
 #     }
 # }
 

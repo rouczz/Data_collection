@@ -1,0 +1,124 @@
+{% extends "data_collection/templates/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">📊 Farmer Sync Dashboard</h2>
+
+    <!-- Progress Section -->
+    <div id="sync-progress" class="alert alert-info">⏳ Loading sync status...</div>
+
+    <div class="row">
+        <!-- Pending Farmers -->
+        <div class="col-md-6">
+            <h3>❌ Pending Farmers</h3>
+            <ul id="pendingFarmersList" class="list-group"></ul>
+            <button id="syncAllButton" class="btn btn-primary mt-2">🔄 Sync All</button>
+        </div>
+
+        <!-- Synced Farmers -->
+        <div class="col-md-6">
+            <h3>✅ Synced Farmers</h3>
+            <ul id="syncedFarmersList" class="list-group"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // ✅ Function to get CSRF token from cookie
+        function getCSRFToken() {
+            let cookieValue = null;
+            let cookies = document.cookie.split(";");
+
+            for (let i = 0; i < cookies.length; i++) {
+                let cookie = cookies[i].trim();
+                if (cookie.startsWith("csrftoken=")) {
+                    cookieValue = cookie.substring("csrftoken=".length, cookie.length);
+                    break;
+                }
+            }
+            return cookieValue;
+        }
+        loadSyncStatus();
+        
+        // Function to load sync status
+        function loadSyncStatus() {
+            fetch("/api/sync-status/")
+                .then(response => response.json())
+                .then(data => {
+                    let pendingFarmersList = document.getElementById("pendingFarmersList");
+                    let syncedFarmersList = document.getElementById("syncedFarmersList");
+                    let progressDiv = document.getElementById("sync-progress");
+    
+                    pendingFarmersList.innerHTML = "";
+                    syncedFarmersList.innerHTML = "";
+    
+                    data.pending.forEach(farmer => {
+                        let listItem = document.createElement("li");
+                        listItem.className = "list-group-item d-flex justify-content-between align-items-center";
+                        listItem.innerHTML = `<span>${farmer.name} - ${farmer.mobile}</span>
+                            <button class="btn btn-warning btn-sm" onclick="syncFarmer(${farmer.id})">🔄 Sync</button>`;
+                        pendingFarmersList.appendChild(listItem);
+                    });
+    
+                    data.synced.forEach(farmer => {
+                        let listItem = document.createElement("li");
+                        listItem.className = "list-group-item list-group-item-success";
+                        listItem.textContent = `${farmer.name} - ${farmer.mobile}`;
+                        syncedFarmersList.appendChild(listItem);
+                    });
+    
+                    let totalFarmers = data.pending.length + data.synced.length;
+                    let syncedPercentage = totalFarmers ? Math.round((data.synced.length / totalFarmers) * 100) : 0;
+                    progressDiv.innerHTML = `✅ ${syncedPercentage}% of farmers synced!`;
+                })
+                .catch(error => console.error("Error loading sync status:", error));
+        }
+        
+        // ✅ Sync all farmers when button is clicked
+        document.getElementById("syncAllButton").addEventListener("click", function () {
+            syncAllFarmers();
+        });
+    
+        loadSyncStatus();
+    });
+    
+    // ✅ Function to sync a single farmer (Move this OUTSIDE DOMContentLoaded)
+    function syncFarmer(farmerId) {
+        fetch("/api/push-all-data/", {
+            method: "POST",
+            body: JSON.stringify({ farmers: [{ id: farmerId }] }),
+            headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert("✅ Farmer synced successfully!");
+            loadSyncStatus();
+        })
+        .catch(error => console.error("Error syncing farmer:", error));
+    }
+    
+    // ✅ Function to sync ALL pending farmers
+    function syncAllFarmers() {
+        fetch("/api/push-all-data/", {
+            method: "POST",
+            body: JSON.stringify({ farmers: [] }),  // Empty list means sync all
+            headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert("✅ All pending farmers synced successfully!");
+            loadSyncStatus();
+        })
+        .catch(error => console.error("Error syncing all farmers:", error));
+    }
+    </script>
+    
+{% endblock %}
