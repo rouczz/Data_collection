@@ -302,41 +302,54 @@ HEADERS = {
 }
 
 
-@csrf_exempt
+import json
+from django.http import JsonResponse
+
 def push_all_data_to_vaarha(request):
     if request.method == "POST":
         data = json.loads(request.body)
         farmers = data.get("farmers", [])
 
+        errors = []  # ✅ Store any errors
+
         for farmer_data in farmers:
             farmer = Farmer.objects.get(id=farmer_data["id"])
 
-            # ✅ Push Farmer First
+            # Push Farmer (if not synced)
             if not farmer.vaarha_id:
-                push_farmers_to_vaarha(farmer)
+                response = push_farmers_to_vaarha(farmer)
+                if response.status_code != 201:
+                    errors.append({"farmer_id": farmer.id, "error": response.json()})
 
-            # ✅ Push Farms
+            # Push Farms
             farms = Farm.objects.filter(farmer=farmer)
             for farm in farms:
                 if not farm.vaarha_id:
-                    push_farms_to_vaarha(farm)
+                    response = push_farms_to_vaarha(farm)
+                    if response.status_code != 201:
+                        errors.append({"farm_id": farm.id, "error": response.json()})
 
-                # ✅ Push Plantations
+                # Push Plantations
                 plantations = Plantation.objects.filter(farm=farm)
                 for plantation in plantations:
                     if not plantation.vaarha_id:
-                        push_plantations_to_vaarha(plantation)
+                        response = push_plantations_to_vaarha(plantation)
+                        if response.status_code != 201:
+                            errors.append({"plantation_id": plantation.id, "error": response.json()})
 
-                    # ✅ Push Species
+                    # Push Species
                     species = Specie.objects.filter(plantation=plantation)
                     for specie in species:
                         if not specie.vaarha_id:
-                            push_species_to_vaarha(specie)
+                            response = push_species_to_vaarha(specie)
+                            if response.status_code != 201:
+                                errors.append({"specie_id": specie.id, "error": response.json()})
 
-                    # ✅ Push Media for Plantation
-                    # push_media_to_vaarha(plantation.vaarha_id, "Plantation")
+        # ✅ Return success if no errors, else return error messages
+        if errors:
+            return JsonResponse({"success": False, "errors": errors}, status=400)
+        return JsonResponse({"success": True, "message": "All data pushed successfully!"})
 
-        return JsonResponse({"message": "All data pushed successfully!"})
 
 
 # ✅ 1️⃣ Push Farmer to Vaarha
@@ -362,8 +375,8 @@ def push_farmers_to_vaarha(farmer):
         farmer_data = response.json()
         farmer.vaarha_id = farmer_data["id"]
         farmer.save()
-    else:
-        print("❌ Failed to push farmer:", response.json())
+
+    return response
 
 
 # ✅ 2️⃣ Push Farm to Vaarha
@@ -385,8 +398,8 @@ def push_farms_to_vaarha(farm):
         farm_data = response.json()
         farm.vaarha_id = farm_data["id"]
         farm.save()
-    else:
-        print("❌ Failed to push farm:", response.json())
+
+    return response
 
 
 # ✅ 3️⃣ Push Plantation (Kyari) to Vaarha
@@ -409,8 +422,8 @@ def push_plantations_to_vaarha(plantation):
         plantation_data = response.json()
         plantation.vaarha_id = plantation_data["id"]
         plantation.save()
-    else:
-        print("❌ Failed to push plantation:", response.json())
+
+    return response
 
 
 # ✅ 4️⃣ Push Specie to Vaarha
@@ -434,8 +447,7 @@ def push_species_to_vaarha(specie):
         specie_data = response.json()
         specie.vaarha_id = specie_data["id"]
         specie.save()
-    else:
-        print("❌ Failed to push species:", response.json())
+    return response
 
 
 # ✅ 5️⃣ Push Media to Vaarha (Upload Flow)
