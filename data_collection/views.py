@@ -7,10 +7,9 @@ from .models import *
 from django.template.loader import render_to_string
 from django.http import HttpResponse
 
-def add_farm_template(request):
-    html_content = render_to_string("data_collection/templates/add_farm.html")
-    return HttpResponse(html_content)
 def create_farmer(request):
+    return render(request, "data_collection/templates/create_farmer.html")
+def create_farmer1(request):
     if request.method == 'POST':
 
         form = FarmerForm(request.POST, request.FILES)  # ✅ Include request.FILES

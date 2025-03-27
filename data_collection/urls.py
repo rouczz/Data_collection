@@ -6,17 +6,17 @@ from .postapi import *
 from .vaarha_api import *
 
 urlpatterns = [
-    path('', create_farmer, name='create_farmer'),
-    path('add_farm/<int:farmer_id>/', add_farm, name='add_farm'),
-    path("api/farms/<int:farmer_id>/", get_farms_for_farmer, name="get_farms"),
-    path('add-plantation/<int:farmer_id>/', add_plantation, name='add_plantation'),
-    path('add-species/<int:farmer_id>/', add_specie, name='add_specie'),
-    path("dashboard-data/<int:farmer_id>/", get_farmer_details, name="dashboard_data"),
-    path("dashboard-farmers/", get_farmers_list, name="dashboard_farmers"),
-    path('dashboard/', dashboard, name='dashboard'),
-    path('get-plantations/<int:farm_id>/', get_plantations_for_farm, name='get_plantations_for_farm'),
-    path("upload-media/<int:farmer_id>/", upload_media, name="upload_media"),
-    path("add-farm/template/", add_farm_template, name="add_farm_template"),
+    # path('', create_farmer, name='create_farmer'),
+    # path('add_farm/<int:farmer_id>/', add_farm, name='add_farm'),
+    # path("api/farms/<int:farmer_id>/", get_farms_for_farmer, name="get_farms"),
+    # path('add-plantation/<int:farmer_id>/', add_plantation, name='add_plantation'),
+    # path('add-species/<int:farmer_id>/', add_specie, name='add_specie'),
+    # path("dashboard-data/<int:farmer_id>/", get_farmer_details, name="dashboard_data"),
+    # path("dashboard-farmers/", get_farmers_list, name="dashboard_farmers"),
+    # path('dashboard/', dashboard, name='dashboard'),
+    # path('get-plantations/<int:farm_id>/', get_plantations_for_farm, name='get_plantations_for_farm'),
+    # path("upload-media/<int:farmer_id>/", upload_media, name="upload_media"),
+
 
 
     #POST API 
@@ -29,6 +29,10 @@ urlpatterns = [
     path("api/districts/<int:state_id>/",get_districts, name="get_districts"),
     path("api/blocks/<int:district_id>/",get_blocks, name="get_blocks"),
     path("api/plantation/species/all/", get_species, name="get_species"),
+
+
+    path("create_farmer/", create_farmer, name="create_farmer"),
+    path("add-farm/", add_farm, name="add_farm"),
 ]
 # Compare this snippet from KMcollect/data_collection/views.py: 
 
