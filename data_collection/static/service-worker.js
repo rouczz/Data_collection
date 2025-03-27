@@ -125,6 +125,7 @@ const STATIC_URLS = [
   '/add-plantation/<int:farmer_id>/',
   '/add-species/<int:farmer_id>/',
   "/upload-media/<int:farmer_id>/",
+  "/add-farm/template/",
 
   // Static files
   "/static/css/style.css",

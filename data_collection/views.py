@@ -4,7 +4,12 @@ from .forms import *
 from django.contrib.gis.geos import Point
 from django.contrib.gis.geos import GEOSGeometry
 from .models import *
+from django.template.loader import render_to_string
+from django.http import HttpResponse
 
+def add_farm_template(request):
+    html_content = render_to_string("data_collection/templates/add_farm.html")
+    return HttpResponse(html_content)
 def create_farmer(request):
     if request.method == 'POST':
 
