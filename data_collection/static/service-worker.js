@@ -1,4 +1,4 @@
-const CACHE_NAME = "farmer-app-v1";
+const CACHE_NAME = "farmer-app-v2";
 const STATIC_URLS = [
     "/",
     "/create_farmer/",
@@ -6,6 +6,7 @@ const STATIC_URLS = [
     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css", // Bootstrap CSS
     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js",
     "/static/js/farmer.js", // Farmer-specific JS
+    "/static/js/farm.js",
     "/static/css/style.css", // Custom CSS
     "/static/offline.html", // Offline fallback page
 ];
@@ -34,7 +35,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
-                return cachedResponse;
+                return cachedResponse; // Serve from cache
             }
             return fetch(event.request).catch(() => caches.match("/static/offline.html"));
         })
