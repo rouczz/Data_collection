@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('data_collection.urls')),
     path('schema_viewer/', include('schema_viewer.urls')),
+    path('', include('pwa.urls')),  
 ]

@@ -1,541 +1,157 @@
 {% extends "data_collection/templates/base.html" %}
 {% load static %}
-
 {% block content %}
 <div class="container mt-4">
     <div class="row">
-        <!-- Plantation Form -->
         <div class="col-md-6">
             <h2 class="mb-3 text-primary">Add Plantation</h2>
-
-            <!-- Success/Error Message Placeholder -->
+            <!-- Success/Error Message -->
             <div id="message"></div>
 
             <!-- Plantation Form -->
             <form id="plantationForm" method="post">
                 {% csrf_token %}
-
                 <!-- Farm Selection Dropdown -->
                 <label for="farmSelect">Select Farm:</label>
-                <select id="farmSelect" name="farm_id" class="form-control">
+                <select id="farmSelect" name="farm_id" class="form-control" required>
                     <option value="">-- Select Farm --</option>
-                    {% for farm in farms %}
-                        <option value="{{ farm.id }}" data-boundary="{{ farm.boundary.geojson }}">{{ farm.farm_name }}</option>
-                    {% endfor %}
                 </select>
 
-                {{ form.as_p }}
-                
-                <input type="hidden" name="boundary" id="boundary">
-                <button type="submit" class="btn btn-success w-100">Submit</button>
-                <div class="mt-3">
-                    <button id="addSpecieBtn" class="btn btn-success">🌱 Add Specie</button>
-                </div>
-            </form>
-        </div>
+                <!-- Species Dropdown -->
+                <label for="speciesSelect">Select Species:</label>
+                <select id="speciesSelect" name="species" class="form-control" required>
+                    <option value="">-- Select Species --</option>
+                </select>
 
-        <!-- Map Section -->
-        <div class="col-md-6">
-            <h3 class="mb-3 text-primary">Draw Plantation Boundary</h3>
-            <div id="map" class="shadow rounded" style="height: 400px;"></div>
+                <!-- Plantation Details -->
+                <label for="plantationName">Plantation Name:</label>
+                <input type="text" id="plantationName" name="plantation_name" class="form-control" required />
+
+                <label for="year">Year:</label>
+                <input type="number" id="year" name="year" class="form-control" required />
+
+                <label for="numberOfPlants">Number of Plants:</label>
+                <input type="number" id="numberOfPlants" name="number_of_plants" class="form-control" required />
+
+                <button type="submit" class="btn btn-primary mt-3">Submit</button>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Leaflet & Turf.js -->
- <!-- Add this before your script -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        let farmBoundaryLayer;
-        let drawnItems = new L.FeatureGroup();
-        let plantationBoundaries = new L.FeatureGroup();
-        
-        // Define Multiple Map Layers
-        var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' });
-        var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Satellite' });
-        var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Terrain' });
-        var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Hybrid' });
-        var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '&copy; Esri World Imagery' });
-    
-        // Initialize Map
-        let map = L.map("map", {
-            center: [23.6157, 81.9195],
-            zoom: 6,
-            maxZoom: 22,
-            layers: [hybrid] // Default layer
-        });
-    
-        // Add Layer Switcher
-        var baseMaps = {
-            "Streets": streets,
-            "Google Satellite": satellite,
-            "Google Terrain": terrain,
-            "Google Hybrid": hybrid,
-            "Esri World Imagery": esri
-        };
-        
-        var overlayMaps = {
-            "Drawn Items": drawnItems,
-            "Existing Plantations": plantationBoundaries
-        };
-        
-        L.control.layers(baseMaps, overlayMaps).addTo(map);
-    
-        // Add FeatureGroups to map
-        map.addLayer(drawnItems);
-        map.addLayer(plantationBoundaries);
-    
-        // Create warning message container
-        let warningContainer = document.createElement('div');
-        warningContainer.id = 'boundary-warning';
-        warningContainer.className = 'alert alert-danger mt-3';
-        warningContainer.style.display = 'none';
-        document.getElementById('map').parentNode.insertBefore(warningContainer, document.getElementById('map').nextSibling);
-    
-        // Handle Farm Selection & Load Boundaries
-        document.getElementById("farmSelect").addEventListener("change", function () {
-            let selectedOption = this.options[this.selectedIndex];
-            let farmId = this.value;
-            let boundaryGeoJSON = selectedOption.getAttribute("data-boundary");
-    
-            if (boundaryGeoJSON) {
-                let boundary = JSON.parse(boundaryGeoJSON);
-    
-                // Remove previous farm boundary
-                if (farmBoundaryLayer) map.removeLayer(farmBoundaryLayer);
-    
-                // Draw new farm boundary
-                farmBoundaryLayer = L.geoJSON(boundary, { color: "blue", fillOpacity: 0.3 }).addTo(map);
-                map.fitBounds(farmBoundaryLayer.getBounds(), { maxZoom: 18 }); 
-    
-                // Clear previously drawn items
-                drawnItems.clearLayers();
-                
-                // Reset warning message
-                document.getElementById('boundary-warning').style.display = 'none';
-                
-                // Load existing plantations for this farm
-                loadPlantationsForFarm(farmId);
-                await loadFarmsIntoDropdown();
-                // Setup drawing tools with validation
-                setupDrawingTools(boundary);
-            }
-        });
-        async function loadFarmsIntoDropdown() {
-            try {
-                const db = await idb.openDB('farmerApp', 1);
-                const tx = db.transaction('farms', 'readonly');
-                const farms = await tx.store.getAll();
-                await tx.done;
-        
-                const farmSelect = document.getElementById("farmSelect");
-                farmSelect.innerHTML = `<option value="">-- Select Farm --</option>`;
-        
-                farms.forEach(farm => {
-                    const option = document.createElement("option");
-                    option.value = farm.id;
-                    option.textContent = farm.farm_name;
-                    option.setAttribute("data-boundary", JSON.stringify(farm.boundary));
-                    farmSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error("Error loading farms into dropdown:", error);
-                alert("Failed to load farms. Please refresh the page.");
-            }
+    async function initDatabase() {
+        if (typeof idb === 'undefined') {
+            return Promise.reject(new Error("idb library not available"));
         }
-        // Load existing plantations for a farm
-        function loadPlantationsForFarm(farmId) {
-            // Clear existing plantation boundaries
-            plantationBoundaries.clearLayers();
+        return idb.openDB('farmerApp', 1);
+    }
+    
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // Extract farmer_id from the URL
             
-            if (!farmId) return;
-            
-            fetch(`/get-plantations/${farmId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    // Add each plantation boundary to the map
-                    data.plantations.forEach(plantation => {
-                        try {
-                            let boundary = JSON.parse(plantation.boundary);
-                            let layer = L.geoJSON(boundary, {
-                                color: "green",
-                                fillOpacity: 0.2,
-                                weight: 2
-                            });
-                            
-                            // Store the GeoJSON boundary and plantation info for intersection checking
-                            layer.plantationId = plantation.id;
-                            layer.plantationName = plantation.kyari_name;
-                            layer.boundary = boundary;
-                            
-                            // Add a popup with plantation info
-                            layer.bindPopup(`
-                                <strong>${plantation.kyari_name}</strong><br>
-                                Area: ${plantation.area_in_acres} acres<br>
-                                Year: ${plantation.year}<br>
-                                Type: ${plantation.kyari_type}
-                            `);
-                            
-                            plantationBoundaries.addLayer(layer);
-                        } catch (e) {
-                            console.error("Error parsing plantation boundary:", e);
-                        }
-                    });
-                })
-                .catch(error => console.error("Error loading plantations:", error));
-        }
-    
-        // Enable Drawing Only Inside Selected Farm
-        function setupDrawingTools(farmBoundary) {
-            // Remove existing draw control if it exists
-            if (map.drawControl) {
-                map.removeControl(map.drawControl);
-            }
-    
-            // Create a new Draw Control with improved options for polygon closing
-            let drawControl = new L.Control.Draw({
-                edit: { 
-                    featureGroup: drawnItems 
-                },
-                draw: {
-                    polygon: {
-                        allowIntersection: false,
-                        showArea: true,
-                        drawError: {
-                            color: '#e1e100',
-                            message: '<strong>Error:</strong> Polygon edges cannot cross!'
-                        },
-                        shapeOptions: {
-                            color: '#f357a1',
-                            weight: 3
-                        },
-                        // Lower the tolerance to make it easier to complete polygons
-                        touchRadius: 4,
-                        guideLayers: []
-                    },
-                    marker: false,
-                    polyline: false,
-                    rectangle: {
-                        shapeOptions: {
-                            color: '#f357a1',
-                            weight: 3
-                        }
-                    },
-                    circle: true,
-                    circlemarker: false
-                }
-            });
-    
-            // Add the new Draw Control to the map
-            map.addControl(drawControl);
-            map.drawControl = drawControl;
-    
-            // Clean up any leftover event handlers
-            map.off(L.Draw.Event.CREATED);
-            map.off(L.Draw.Event.EDITED);
-            
-            // Function to check if polygon intersects with existing plantations
-            function checkPlantationIntersections(drawnPolygon) {
-                let intersectsWithExisting = false;
-                let intersectingPlantation = null;
-                
-                try {
-                    // Create a turf polygon from the drawn shape
-                    let drawnTurfPolygon = turf.polygon(drawnPolygon.geometry.coordinates);
-                    
-                    // Check against each existing plantation
-                    plantationBoundaries.eachLayer(function(layer) {
-                        if (intersectsWithExisting) return; // Skip if we already found an intersection
-                        
-                        if (layer.boundary) {
-                            try {
-                                // Create a turf polygon from the existing plantation
-                                let existingTurfPolygon = turf.polygon(layer.boundary.coordinates);
-                                
-                                // Check for intersection (not just contains)
-                                let intersects = turf.booleanIntersects(drawnTurfPolygon, existingTurfPolygon);
-                                
-                                if (intersects) {
-                                    intersectsWithExisting = true;
-                                    intersectingPlantation = layer;
-                                }
-                            } catch (e) {
-                                console.error("Error checking intersection with plantation:", e);
-                            }
-                        }
-                    });
-                } catch (e) {
-                    console.error("Error in intersection checking:", e);
-                }
-                
-                return { intersects: intersectsWithExisting, plantation: intersectingPlantation };
-            }
-            
-            // Handle polygon creation event with improved validation
-            map.on(L.Draw.Event.CREATED, function (event) {
-                let layer = event.layer;
-                let drawnPolygon = layer.toGeoJSON();
-                let warningContainer = document.getElementById('boundary-warning');
-                
-                // Reset warning
-                warningContainer.style.display = 'none';
-                warningContainer.innerHTML = '';
-                
-                try {
-                    // Normalize the farm boundary GeoJSON format if needed
-                    let farmPolygon;
-                    if (farmBoundary.type === "Feature" && farmBoundary.geometry) {
-                        farmPolygon = turf.polygon(farmBoundary.geometry.coordinates);
-                    } else if (farmBoundary.coordinates) {
-                        farmPolygon = turf.polygon(farmBoundary.coordinates);
-                    } else {
-                        throw new Error("Invalid farm boundary format");
-                    }
-                    
-                    // Create turf polygon from drawn shape
-                    let drawnPolygonGeom = turf.polygon(drawnPolygon.geometry.coordinates);
-                    
-                    // First check: Is the plantation fully within the farm boundary?
-                    let isWithinFarm = turf.booleanContains(farmPolygon, drawnPolygonGeom);
-                    
-                    if (!isWithinFarm) {
-                        warningContainer.innerHTML = '⚠️ The plantation boundary must be fully inside the farm boundary! Please redraw.';
-                        warningContainer.style.display = 'block';
-                        
-                        // Style drawn polygon as invalid
-                        layer.setStyle({
-                            color: 'red',
-                            fillColor: '#ff6666',
-                            fillOpacity: 0.4
-                        });
-                        
-                        drawnItems.clearLayers();
-                        drawnItems.addLayer(layer);
-                        
-                        // Clear boundary value
-                        document.getElementById("boundary").value = '';
-                        return;
-                    }
-                    
-                    // Second check: Does the plantation intersect with any existing plantation?
-                    let intersectionCheck = checkPlantationIntersections(drawnPolygon);
-                    
-                    if (intersectionCheck.intersects) {
-                        warningContainer.innerHTML = `⚠️ This plantation boundary overlaps with existing plantation "${intersectionCheck.plantation.plantationName}"! Please redraw.`;
-                        warningContainer.style.display = 'block';
-                        
-                        // Style drawn polygon as invalid
-                        layer.setStyle({
-                            color: 'red',
-                            fillColor: '#ff6666',
-                            fillOpacity: 0.4
-                        });
-                        
-                        // Highlight the intersecting plantation
-                        intersectionCheck.plantation.setStyle({
-                            color: 'orange',
-                            weight: 3,
-                            fillOpacity: 0.4
-                        });
-                        
-                        intersectionCheck.plantation.openPopup();
-                        
-                        drawnItems.clearLayers();
-                        drawnItems.addLayer(layer);
-                        
-                        // Clear boundary value
-                        document.getElementById("boundary").value = '';
-                        return;
-                    }
-                    
-                    // If we reach here, the boundary is valid!
-                    
-                    // Calculate area in acres
-                    let area = calculateAreaInAcres(drawnPolygon);
-                    document.getElementById("id_area_in_acres").value = area.toFixed(2);
-    
-                    // Add the valid polygon to the map with a green style
-                    drawnItems.clearLayers(); // Clear previous drawings
-                    layer.setStyle({
-                        color: '#4CAF50',
-                        fillColor: '#81C784',
-                        fillOpacity: 0.5,
-                        weight: 2
-                    });
-                    drawnItems.addLayer(layer);
-    
-                    // Store the valid polygon in the hidden input field
-                    document.getElementById("boundary").value = JSON.stringify(drawnPolygon.geometry);
-                    
-                    console.log("Validation passed! Polygon is valid.");
-                    
-                    // Show success message
-                    warningContainer.innerHTML = '✅ Valid plantation boundary! You can now submit the form.';
-                    warningContainer.className = 'alert alert-success mt-3';
-                    warningContainer.style.display = 'block';
-                    
-                    // Reset plantation styles if they were highlighted
-                    plantationBoundaries.eachLayer(function(layer) {
-                        layer.setStyle({
-                            color: "green",
-                            fillOpacity: 0.2,
-                            weight: 2
-                        });
-                    });
-                    
-                    // Button to allow reset
-                    let resetButton = document.createElement('button');
-                    resetButton.className = 'btn btn-sm btn-outline-primary ml-2 float-end';
-                    resetButton.innerText = 'Redraw';
-                    resetButton.onclick = function() {
-                        drawnItems.clearLayers();
-                        document.getElementById("boundary").value = '';
-                        warningContainer.style.display = 'none';
-                        warningContainer.className = 'alert alert-danger mt-3';
-                        return false;
-                    };
-                    warningContainer.appendChild(resetButton);
-                    
-                } catch (error) {
-                    console.error("Validation error:", error);
-                    warningContainer.innerHTML = "⚠️ Error validating boundary. Please try again.";
-                    warningContainer.style.display = 'block';
-                    document.getElementById("boundary").value = '';
-                }
-            });
-            
-            // Clear warnings when starting a new drawing
-            map.on(L.Draw.Event.DRAWSTART, function() {
-                document.getElementById('boundary-warning').style.display = 'none';
-                
-                // Reset plantation styles
-                plantationBoundaries.eachLayer(function(layer) {
-                    layer.setStyle({
-                        color: "green",
-                        fillOpacity: 0.2,
-                        weight: 2
-                    });
-                });
-            });
-        }
-    
-        // Calculate area in acres from GeoJSON
-        function calculateAreaInAcres(polygon) {
-            try {
-                // Calculate area in square meters
-                let area = turf.area(polygon);
-                // Convert to acres (1 sq meter = 0.000247105 acres)
-                return area * 0.000247105;
-            } catch (error) {
-                console.error("Area calculation error:", error);
-                return 0;
-            }
-        }
-    
-        // Handle form submission
-        // Define farmerId from the Django template context
-        var farmerId = {{ farmer.id }};
-        console.log("Farmer ID:", farmerId); // Debugging: Log the farmerId to confirm it's set
-    
-        document.getElementById("plantationForm").addEventListener("submit", function (event) {
-            event.preventDefault();
-    
-            let boundaryData = document.getElementById("boundary").value;
-    
-            if (!boundaryData || boundaryData === "null" || boundaryData === "undefined") {
-                alert("⚠️ You must draw a plantation boundary before submitting!");
+            const urlParams = new URLSearchParams(window.location.search);
+            const farmerId = urlParams.get('farmer_id');
+            if (!farmerId) {
+                alert('Farmer ID is missing. Please start from the Farmer page.');
                 return;
             }
     
-            // Additional validation before submission
-            let warningVisible = document.getElementById('boundary-warning').style.display !== 'none' && 
-                                 document.getElementById('boundary-warning').className.includes('alert-danger');
-            
-            if (warningVisible) {
-                alert("⚠️ Please fix the boundary issues before submitting!");
-                return;
-            }
+            // Initialize IndexedDB
+            const db = await initDatabase();
     
-            // Validate farmerId before proceeding
-            if (!farmerId || farmerId === "undefined" || farmerId === "null") {
-                alert("⚠️ Farmer ID is missing or invalid. Please refresh the page.");
-                return;
-            }
+            // Populate farms dropdown
+            const farmTx = db.transaction('farms', 'readonly');
+            const farmIndex = farmTx.store.index('farmerId'); // Use the index to query farms by farmer_id
+            const farms = await farmIndex.getAll(parseInt(farmerId));
+            const farmSelect = document.getElementById('farmSelect');
     
-            let formData = new FormData(this);
-    
-            // Construct the URL and log it for debugging
-            let url = `/add-plantation/${farmerId}/`;
-            console.log("Constructed URL:", url);
-    
-            fetch(url, {
-                method: "POST",
-                body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
-            })
-                .then(response => response.json())
-                .then(data => {
-                    let messageDiv = document.getElementById("message");
-                    messageDiv.innerHTML = "";
-    
-                    if (data.success) {
-                        messageDiv.innerHTML = `
-                            <div class="alert alert-success mt-3">
-                                <p>✅ Plantation added successfully!</p>
-                                <button id="addAnotherPlantationBtn" class="btn btn-primary mt-2">➕ Add Another Plantation</button>
-                                <button id="proceedToSpeciesBtn" class="btn btn-success mt-2">🌱 Proceed to Add Species</button>
-                            </div>
-                        `;
-    
-                        // Hide form after submission
-                        document.getElementById("plantationForm").style.display = "none";
-    
-                        // Attach event listeners for buttons
-                        document.getElementById("addAnotherPlantationBtn").addEventListener("click", addAnotherPlantation);
-                        document.getElementById("proceedToSpeciesBtn").addEventListener("click", function () {
-                            proceedToSpecies(data.farmer_id); // Use the validated farmer_id
-                        });
-                    } else {
-                        messageDiv.innerHTML = `<p class="text-danger">❌ Error: ${JSON.stringify(data.errors)}</p>`;
-                    }
-                })
-                .catch(error => console.error("AJAX Error:", error));
-        });
-    
-        // Reset form for another plantation
-        function addAnotherPlantation() {
-            document.getElementById("plantationForm").reset();
-            document.getElementById("message").innerHTML = "";
-            document.getElementById("plantationForm").style.display = "block";
-            drawnItems.clearLayers();
-            document.getElementById('boundary-warning').style.display = 'none';
-            document.getElementById('boundary-warning').className = 'alert alert-danger mt-3';
-            
-            // Reset plantation styles
-            plantationBoundaries.eachLayer(function(layer) {
-                layer.setStyle({
-                    color: "green",
-                    fillOpacity: 0.2,
-                    weight: 2
-                });
+            farms.forEach(farm => {
+                const option = document.createElement('option');
+                option.value = farm.id;
+                option.textContent = farm.farm_name;
+                farmSelect.appendChild(option);
             });
-        }
-        document.getElementById("addSpecieBtn").addEventListener("click", function() {
-            // Show the plantation boundary form or map
-            window.location.href = `/add-species/{{ farmer.id }}/`;
-        });
-        // Proceed to species form
-        function proceedToSpecies(farmerId) {
-            window.location.href = `/add-species/${farmerId}/`;
+    
+            // Populate species dropdown with random species
+            const species = ['Mango', 'Apple', 'Banana', 'Orange', 'Grapes'];
+            const speciesSelect = document.getElementById('speciesSelect');
+            species.forEach(specie => {
+                const option = document.createElement('option');
+                option.value = specie;
+                option.textContent = specie;
+                speciesSelect.appendChild(option);
+            });
+    
+        } catch (error) {
+            console.error('Error loading data:', error);
+            alert('Failed to load data. Please refresh the page.');
         }
     });
+    
+    // Handle form submission
+    document.getElementById('plantationForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+    
+        // Extract query parameters from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const farmerId = urlParams.get('farmer_id');
+        if (!farmerId) {
+            alert('Farmer ID is missing. Cannot proceed.');
+            return;
+        }
+    
+        // Collect form data
+        const formData = new FormData(event.target);
+        const plantationData = {
+            farm_id: parseInt(formData.get('farm_id')),
+            species: formData.get('species'),
+            plantation_name: formData.get('plantation_name'),
+            year: parseInt(formData.get('year')),
+            number_of_plants: parseInt(formData.get('number_of_plants')),
+            timestamp: new Date().toISOString(),
+            synced: false,
+        };
+    
+        try {
+            const db = await initDatabase();
+            const tx = db.transaction('plantations', 'readwrite');
+            const localId = await tx.store.add(plantationData); // Auto-generate ID
+            await tx.done;
+    
+            alert('Plantation saved offline.');
+    
+            // Display success message
+            document.getElementById('message').innerHTML = `
+                <div class="alert alert-success">
+                    <p>Plantation created successfully!</p>
+                    <button class="btn btn-primary mt-2" onclick="addAnotherPlantation()">Add Another Plantation</button>
+                    <button class="btn btn-success mt-2" onclick="proceedToSpecies(${farmerId})">Proceed to Species</button>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error saving plantation data:', error);
+            alert('Failed to save plantation data. Please try again.');
+        }
+    });
+    
+    // Function to add another plantation
+    function addAnotherPlantation() {
+        document.getElementById('plantationForm').reset();
+        document.getElementById('message').innerHTML = '';
+        document.getElementById('plantationForm').style.display = 'block';
+
+    }
+    
+    // Function to proceed to species page
+    function proceedToSpecies(farmerId) {
+        if (!farmerId) {
+            alert('Farmer ID is missing. Cannot proceed to species.');
+            return;
+        }
+        window.location.href = `/add-species/?farmer_id=${farmerId}`;
+    }
+
 </script>
 {% endblock %}

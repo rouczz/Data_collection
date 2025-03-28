@@ -20,6 +20,7 @@ urlpatterns = [
 
 
     #POST API 
+    
     path('send-farmer/<int:farmer_id>/', send_farmer_data, name='send_farmer_data'),
     path('send-farm/<int:farm_id>/',send_farm_data, name = "send_farm"),
     path('send-plantation/<int:plantation_id>/',send_plantation_data, name = "send_plantation_data"),
@@ -33,6 +34,10 @@ urlpatterns = [
 
     path("create_farmer/", create_farmer, name="create_farmer"),
     path("add-farm/", add_farm, name="add_farm"),
+    path("add-plantation/", add_plantation, name="add_plantation"),
+    path("add-species/", add_species, name="add_species"),
+    path("media-upload/", media_upload, name="media_upload"),
+
 ]
 # Compare this snippet from KMcollect/data_collection/views.py: 
 

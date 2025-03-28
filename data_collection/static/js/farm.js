@@ -3,33 +3,9 @@ async function initDatabase() {
     if (typeof idb === 'undefined') {
         return Promise.reject(new Error("idb library not available"));
     }
-    return idb.openDB('farmerApp', 2, {
-        upgrade(db) {
-            if (!db.objectStoreNames.contains('farmers')) {
-                db.createObjectStore('farmers', { keyPath: 'id', autoIncrement: true });
-            }
-            if (!db.objectStoreNames.contains('farms')) {
-                db.createObjectStore('farms', { keyPath: 'id', autoIncrement: true });
-            }
-        }
-    });
+    return idb.openDB('farmerApp', 1);
 }
 
-// Initialize IndexedDB
-// async function initDatabase() {
-//     return openDB('farmerApp', 1, {
-//         upgrade(db) {
-//             if (!db.objectStoreNames.contains('farmers')) {
-//                 db.createObjectStore('farmers', { keyPath: 'id', autoIncrement: true });
-//             }
-//             if (!db.objectStoreNames.contains('farms')) {
-//                 db.createObjectStore('farms', { keyPath: 'id', autoIncrement: true });
-//             }
-//         }
-//     });
-// }
-
-// Initialize IndexedDB
 
 
 document.addEventListener('DOMContentLoaded', async () => {

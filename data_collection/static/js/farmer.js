@@ -120,25 +120,47 @@
 //         }
 //     });
 // }
+// async function initDatabase() {
+//     if (typeof idb === 'undefined') {
+//         return Promise.reject(new Error("idb library not available"));
+//     }
+//     return idb.openDB('farmerApp', 1, {
+//         upgrade(db) {
+//             if (!db.objectStoreNames.contains('farmers')) {
+//                 db.createObjectStore('farmers', { keyPath: 'id', autoIncrement: true });
+//             }
+            
+//             if (!db.objectStoreNames.contains('farms')) {
+//                 db.createObjectStore('farms', { keyPath: 'id', autoIncrement: true });
+//             }
+//         }
+//     });
+// }
+
 async function initDatabase() {
     if (typeof idb === 'undefined') {
         return Promise.reject(new Error("idb library not available"));
     }
-    return idb.openDB('farmerApp', 1, {
-        upgrade(db) {
-            if (!db.objectStoreNames.contains('farmers')) {
-                db.createObjectStore('farmers', { keyPath: 'id', autoIncrement: true });
-            }
+    return idb.openDB('farmerApp', 1, { // Increment version to trigger upgrade
+        upgrade(db, oldVersion) {
             if (!db.objectStoreNames.contains('farmers')) {
                 db.createObjectStore('farmers', { keyPath: 'id', autoIncrement: true });
             }
             if (!db.objectStoreNames.contains('farms')) {
-                db.createObjectStore('farms', { keyPath: 'id', autoIncrement: true });
+                const farmStore = db.createObjectStore('farms', { keyPath: 'id', autoIncrement: true });
+                farmStore.createIndex('farmerId', 'farmer_id'); // Index for querying farms by farmer_id
+            }
+            if (!db.objectStoreNames.contains('plantations')) {
+                const plantationStore = db.createObjectStore('plantations', { keyPath: 'id', autoIncrement: true });
+                plantationStore.createIndex('farmId', 'farm_id'); // Index for querying plantations by farm_id
+            }
+            if (!db.objectStoreNames.contains('species')) {
+                const speciesStore = db.createObjectStore('species', { keyPath: 'id', autoIncrement: true });
+                speciesStore.createIndex('plantationId', 'plantation_id'); // Index for querying species by plantation_id
             }
         }
     });
 }
-
 // Handle form submission
 document.getElementById('farmerForm').addEventListener('submit', async (event) => {
     event.preventDefault();
