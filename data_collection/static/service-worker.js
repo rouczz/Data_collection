@@ -1,12 +1,12 @@
 const CACHE_NAME = "kisanmitra-cache-v4";
 const urlsToCache = [
   "/",
-  "/create_farmer/",
-  "/add_farm/:farmer_id/",
-  "/api/farms/:farmer_id/",
-  "/add-plantation/:farmer_id/",
-  "/add-species/:farmer_id/",
-  "/dashboard-data/:farmer_id/",
+  // "/create_farmer/",
+  // "/add_farm/:farmer_id/",
+  // "/api/farms/:farmer_id/",
+  // "/add-plantation/:farmer_id/",
+  // "/add-species/:farmer_id/",
+  // "/dashboard-data/:farmer_id/",
   "/dashboard-farmers/",
   "/dashboard/",
   "/get-plantations/:farm_id/",

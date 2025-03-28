@@ -373,6 +373,7 @@ def push_farmers_to_vaarha(farmer):
     response = requests.post(f"{VAARHA_API_BASE_URL}/farmer/create/", json=farmer_payload, headers=HEADERS)
     if response.status_code == 201:
         farmer_data = response.json()
+        print("Farmer Data:",farmer_data)
         farmer.vaarha_id = farmer_data["id"]
         farmer.save()
 
@@ -396,11 +397,34 @@ def push_farms_to_vaarha(farm):
     response = requests.post(f"{VAARHA_API_BASE_URL}/plantation/agfarm/create/", json=farm_payload, headers=HEADERS)
     if response.status_code == 201:
         farm_data = response.json()
+        print("Farm data:",farm_data)
         farm.vaarha_id = farm_data["id"]
         farm.save()
 
     return response
 
+# def push_farms(farm):
+#     farm_payload = {
+#         "farmer": 145529,
+#         "farmer_id": farm.farmer.vaarha_id,
+#         "farm_name": farm.farm_name,
+#         "area_in_acres": farm.area_in_acres,
+#         "ownership": farm.ownership,
+#         "boundary_method": farm.boundary_method,
+#         "boundary": {
+#             "coordinates": [list(farm.boundary.coords[0])],
+#             "type": "Polygon"
+#         },
+#         "metadata": {}
+#     }
+#     response = requests.post(f"{VAARHA_API_BASE_URL}/plantation/agfarm/create/", json=farm_payload, headers=HEADERS)
+#     if response.status_code == 201:
+#         farm_data = response.json()
+#         print("Farm data:",farm_data)
+#         farm.vaarha_id = farm_data["id"]
+#         farm.save()
+
+#     return response
 
 # ✅ 3️⃣ Push Plantation (Kyari) to Vaarha
 def push_plantations_to_vaarha(plantation):
