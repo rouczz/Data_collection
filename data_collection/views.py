@@ -386,284 +386,284 @@ def media_upload(request):
 
 
 
-# from django.http import JsonResponse
-# from django.core.files.base import ContentFile
-# import base64
-# from PIL import Image
-# from io import BytesIO
-# from reportlab.lib.pagesizes import letter
-# from reportlab.pdfgen import canvas
-# from .models import FarmerMedia
-# from io import BytesIO
-# from PIL import Image
-# from reportlab.lib.pagesizes import letter
-# from reportlab.pdfgen import canvas
-# import tempfile
-# from io import BytesIO
-# from PIL import Image
-# from reportlab.lib.pagesizes import letter
-# from reportlab.pdfgen import canvas
-# import tempfile
-# import os
-# from django.core.files.base import ContentFile
-# from django.http import JsonResponse
-# from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.core.files.base import ContentFile
+import base64
+from PIL import Image
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from .models import FarmerMedia
+from io import BytesIO
+from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import tempfile
+from io import BytesIO
+from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import tempfile
+import os
+from django.core.files.base import ContentFile
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
 
-# def optimize_image(image_file, max_size=(1200, 1200), quality=85):
-#     """
-#     Resizes and optimizes an image to reduce file size.
-#     Returns a BytesIO object containing the optimized image.
-#     """
-#     # Open the image
-#     img = Image.open(image_file)
+def optimize_image(image_file, max_size=(1200, 1200), quality=85):
+    """
+    Resizes and optimizes an image to reduce file size.
+    Returns a BytesIO object containing the optimized image.
+    """
+    # Open the image
+    img = Image.open(image_file)
     
-#     # Convert image to RGB if it's not (handles RGBA and other formats)
-#     if img.mode != 'RGB':
-#         img = img.convert('RGB')
+    # Convert image to RGB if it's not (handles RGBA and other formats)
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
     
-#     # Resize the image while maintaining aspect ratio
-#     img.thumbnail(max_size, Image.Resampling.LANCZOS)
+    # Resize the image while maintaining aspect ratio
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)
     
-#     # Create a BytesIO object to store the optimized image
-#     optimized = BytesIO()
+    # Create a BytesIO object to store the optimized image
+    optimized = BytesIO()
     
-#     # Save the image with reduced quality
-#     img.save(optimized, format='JPEG', quality=quality, optimize=True)
+    # Save the image with reduced quality
+    img.save(optimized, format='JPEG', quality=quality, optimize=True)
     
-#     # Reset the buffer position
-#     optimized.seek(0)
+    # Reset the buffer position
+    optimized.seek(0)
     
-#     return optimized
+    return optimized
 
-# def generate_pdf_from_image(image):
-#     """
-#     Creates a PDF from a single image.
-#     Returns a BytesIO object containing the PDF data.
-#     """
-#     # Create a BytesIO buffer to store the PDF
-#     pdf_buffer = BytesIO()
+def generate_pdf_from_image(image):
+    """
+    Creates a PDF from a single image.
+    Returns a BytesIO object containing the PDF data.
+    """
+    # Create a BytesIO buffer to store the PDF
+    pdf_buffer = BytesIO()
 
-#     # Create a PDF canvas
-#     c = canvas.Canvas(pdf_buffer, pagesize=letter)
-#     width, height = letter  # Width and height of the PDF page
+    # Create a PDF canvas
+    c = canvas.Canvas(pdf_buffer, pagesize=letter)
+    width, height = letter  # Width and height of the PDF page
     
-#     try:
-#         # Optimize the image first
-#         optimized_image = optimize_image(image)
+    try:
+        # Optimize the image first
+        optimized_image = optimize_image(image)
         
-#         # Open the optimized image
-#         img = Image.open(optimized_image)
-#         img_width, img_height = img.size
-#         aspect_ratio = img_height / img_width
+        # Open the optimized image
+        img = Image.open(optimized_image)
+        img_width, img_height = img.size
+        aspect_ratio = img_height / img_width
 
-#         # Calculate new dimensions while maintaining aspect ratio
-#         max_width = width * 0.9
-#         max_height = height * 0.9
+        # Calculate new dimensions while maintaining aspect ratio
+        max_width = width * 0.9
+        max_height = height * 0.9
         
-#         new_width = min(max_width, img_width)
-#         new_height = new_width * aspect_ratio
+        new_width = min(max_width, img_width)
+        new_height = new_width * aspect_ratio
 
-#         if new_height > max_height:
-#             new_height = max_height
-#             new_width = new_height / aspect_ratio
+        if new_height > max_height:
+            new_height = max_height
+            new_width = new_height / aspect_ratio
 
-#         # Save the image to a temporary file
-#         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-#             temp_filename = temp_file.name
-#             img.save(temp_filename, format="JPEG", quality=85)
+        # Save the image to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+            temp_filename = temp_file.name
+            img.save(temp_filename, format="JPEG", quality=85)
 
-#         # Draw the image onto the PDF using the temporary file path
-#         c.drawImage(
-#             temp_filename,
-#             30, height - 30 - new_height,
-#             width=new_width,
-#             height=new_height
-#         )
+        # Draw the image onto the PDF using the temporary file path
+        c.drawImage(
+            temp_filename,
+            30, height - 30 - new_height,
+            width=new_width,
+            height=new_height
+        )
         
-#         # Delete the temporary file after drawing
-#         os.unlink(temp_filename)
+        # Delete the temporary file after drawing
+        os.unlink(temp_filename)
         
-#     except Exception as e:
-#         # Log the error for debugging
-#         import logging
-#         logging.error(f"Error processing image: {str(e)}")
-#         raise
+    except Exception as e:
+        # Log the error for debugging
+        import logging
+        logging.error(f"Error processing image: {str(e)}")
+        raise
 
-#     # Save the PDF
-#     c.save()
+    # Save the PDF
+    c.save()
 
-#     # Move the buffer pointer to the beginning
-#     pdf_buffer.seek(0)
-#     return pdf_buffer
+    # Move the buffer pointer to the beginning
+    pdf_buffer.seek(0)
+    return pdf_buffer
 
-# def generate_pdf_from_images(front_image, back_image):
-#     """
-#     Combines two images (front and back) into a single PDF file.
-#     Returns a BytesIO object containing the PDF data.
-#     Handles both InMemoryUploadedFile and TemporaryUploadedFile.
-#     """
-#     # Create a BytesIO buffer to store the PDF
-#     pdf_buffer = BytesIO()
+def generate_pdf_from_images(front_image, back_image):
+    """
+    Combines two images (front and back) into a single PDF file.
+    Returns a BytesIO object containing the PDF data.
+    Handles both InMemoryUploadedFile and TemporaryUploadedFile.
+    """
+    # Create a BytesIO buffer to store the PDF
+    pdf_buffer = BytesIO()
 
-#     # Create a PDF canvas
-#     c = canvas.Canvas(pdf_buffer, pagesize=letter)
-#     width, height = letter  # Width and height of the PDF page
+    # Create a PDF canvas
+    c = canvas.Canvas(pdf_buffer, pagesize=letter)
+    width, height = letter  # Width and height of the PDF page
 
-#     # Helper function to add an image to the PDF
-#     def add_image_to_pdf(image, x, y, max_width, max_height):
-#         try:
-#             # Optimize the image first
-#             optimized_image = optimize_image(image)
+    # Helper function to add an image to the PDF
+    def add_image_to_pdf(image, x, y, max_width, max_height):
+        try:
+            # Optimize the image first
+            optimized_image = optimize_image(image)
             
-#             # Open the optimized image
-#             img = Image.open(optimized_image)
-#             img_width, img_height = img.size
-#             aspect_ratio = img_height / img_width
+            # Open the optimized image
+            img = Image.open(optimized_image)
+            img_width, img_height = img.size
+            aspect_ratio = img_height / img_width
 
-#             # Calculate new dimensions while maintaining aspect ratio
-#             new_width = min(max_width, img_width)
-#             new_height = new_width * aspect_ratio
+            # Calculate new dimensions while maintaining aspect ratio
+            new_width = min(max_width, img_width)
+            new_height = new_width * aspect_ratio
 
-#             if new_height > max_height:
-#                 new_height = max_height
-#                 new_width = new_height / aspect_ratio
+            if new_height > max_height:
+                new_height = max_height
+                new_width = new_height / aspect_ratio
 
-#             # Save the image to a temporary file
-#             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-#                 temp_filename = temp_file.name
-#                 img.save(temp_filename, format="JPEG", quality=85)
+            # Save the image to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+                temp_filename = temp_file.name
+                img.save(temp_filename, format="JPEG", quality=85)
 
-#             # Draw the image onto the PDF using the temporary file path
-#             c.drawImage(
-#                 temp_filename,
-#                 x, y - new_height,
-#                 width=new_width,
-#                 height=new_height
-#             )
+            # Draw the image onto the PDF using the temporary file path
+            c.drawImage(
+                temp_filename,
+                x, y - new_height,
+                width=new_width,
+                height=new_height
+            )
             
-#             # Delete the temporary file after drawing
-#             os.unlink(temp_filename)
+            # Delete the temporary file after drawing
+            os.unlink(temp_filename)
             
-#         except Exception as e:
-#             # Log the error for debugging
-#             import logging
-#             logging.error(f"Error processing image: {str(e)}")
-#             raise
+        except Exception as e:
+            # Log the error for debugging
+            import logging
+            logging.error(f"Error processing image: {str(e)}")
+            raise
 
-#     # Add the front image to the first page
-#     if front_image:
-#         add_image_to_pdf(front_image, 30, height - 30, width * 0.9, height * 0.9)
+    # Add the front image to the first page
+    if front_image:
+        add_image_to_pdf(front_image, 30, height - 30, width * 0.9, height * 0.9)
 
-#     # Add the back image to the second page
-#     if back_image:
-#         c.showPage()  # Start a new page
-#         add_image_to_pdf(back_image, 30, height - 30, width * 0.9, height * 0.9)
+    # Add the back image to the second page
+    if back_image:
+        c.showPage()  # Start a new page
+        add_image_to_pdf(back_image, 30, height - 30, width * 0.9, height * 0.9)
 
-#     # Save the PDF
-#     c.save()
+    # Save the PDF
+    c.save()
 
-#     # Move the buffer pointer to the beginning
-#     pdf_buffer.seek(0)
-#     return pdf_buffer
+    # Move the buffer pointer to the beginning
+    pdf_buffer.seek(0)
+    return pdf_buffer
 
 
-# def upload_media(request, farmer_id):
-#     farmer = get_object_or_404(Farmer, id=farmer_id)
+def upload_media(request, farmer_id):
+    farmer = get_object_or_404(Farmer, id=farmer_id)
 
-#     if request.method == "POST":
-#         try:
-#             # Create a new FarmerMedia instance
-#             media = FarmerMedia(farmer=farmer)
+    if request.method == "POST":
+        try:
+            # Create a new FarmerMedia instance
+            media = FarmerMedia(farmer=farmer)
 
-#             # Process and optimize profile picture
-#             if "picture" in request.FILES:
-#                 optimized = optimize_image(request.FILES["picture"])
-#                 media.picture.save(f"picture_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+            # Process and optimize profile picture
+            if "picture" in request.FILES:
+                optimized = optimize_image(request.FILES["picture"])
+                media.picture.save(f"picture_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
-#             # Handle English EPIC
-#             if "photo_of_english_epic" in request.FILES:
-#                 english_epic = request.FILES["photo_of_english_epic"]
-#                 # Create both optimized image and PDF version
-#                 optimized = optimize_image(english_epic)
-#                 media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+            # Handle English EPIC
+            if "photo_of_english_epic" in request.FILES:
+                english_epic = request.FILES["photo_of_english_epic"]
+                # Create both optimized image and PDF version
+                optimized = optimize_image(english_epic)
+                media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
-#                 # Generate PDF for English EPIC
-#                 english_epic.seek(0)  # Reset file pointer
-#                 pdf_buffer = generate_pdf_from_image(english_epic)
-#                 media.english_epic_pdf.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                # Generate PDF for English EPIC
+                english_epic.seek(0)  # Reset file pointer
+                pdf_buffer = generate_pdf_from_image(english_epic)
+                media.english_epic_pdf.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
-#             # Handle Regional EPIC
-#             if "photo_of_regional_language_epic" in request.FILES:
-#                 regional_epic = request.FILES["photo_of_regional_language_epic"]
-#                 # Create both optimized image and PDF version
-#                 optimized = optimize_image(regional_epic)
-#                 media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+            # Handle Regional EPIC
+            if "photo_of_regional_language_epic" in request.FILES:
+                regional_epic = request.FILES["photo_of_regional_language_epic"]
+                # Create both optimized image and PDF version
+                optimized = optimize_image(regional_epic)
+                media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
-#                 # Generate PDF for Regional EPIC
-#                 regional_epic.seek(0)  # Reset file pointer
-#                 pdf_buffer = generate_pdf_from_image(regional_epic)
-#                 media.regional_epic_pdf.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                # Generate PDF for Regional EPIC
+                regional_epic.seek(0)  # Reset file pointer
+                pdf_buffer = generate_pdf_from_image(regional_epic)
+                media.regional_epic_pdf.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
-#             # Handle Land Ownership document
-#             if "land_ownership" in request.FILES:
-#                 land_doc = request.FILES["land_ownership"]
-#                 # Create both optimized image and PDF version
-#                 optimized = optimize_image(land_doc)
-#                 # media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+            # Handle Land Ownership document
+            if "land_ownership" in request.FILES:
+                land_doc = request.FILES["land_ownership"]
+                # Create both optimized image and PDF version
+                optimized = optimize_image(land_doc)
+                # media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
-#                 # Generate PDF for Land Ownership
-#                 land_doc.seek(0)  # Reset file pointer
-#                 pdf_buffer = generate_pdf_from_image(land_doc)
-#                 media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                # Generate PDF for Land Ownership
+                land_doc.seek(0)  # Reset file pointer
+                pdf_buffer = generate_pdf_from_image(land_doc)
+                media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
-#             # Handle Tree picture
-#             if "picture_of_tree" in request.FILES:
-#                 optimized = optimize_image(request.FILES["picture_of_tree"])
-#                 media.picture_of_tree.save(f"tree_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+            # Handle Tree picture
+            if "picture_of_tree" in request.FILES:
+                optimized = optimize_image(request.FILES["picture_of_tree"])
+                media.picture_of_tree.save(f"tree_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
 
-#             # Handle ID proof generation
-#             front_image = request.FILES.get("id_proof_front")
-#             back_image = request.FILES.get("id_proof_back")
-#             if front_image and back_image:
-#                 # Generate PDF from the uploaded images
-#                 pdf_buffer = generate_pdf_from_images(front_image, back_image)
-#                 pdf_file = ContentFile(pdf_buffer.read(), name=f"id_proof_{farmer.id}.pdf")
+            # Handle ID proof generation
+            front_image = request.FILES.get("id_proof_front")
+            back_image = request.FILES.get("id_proof_back")
+            if front_image and back_image:
+                # Generate PDF from the uploaded images
+                pdf_buffer = generate_pdf_from_images(front_image, back_image)
+                pdf_file = ContentFile(pdf_buffer.read(), name=f"id_proof_{farmer.id}.pdf")
 
-#                 # Save the PDF to the media model
-#                 media.id_proof.save(f"id_proof_{farmer.id}.pdf", pdf_file, save=False)
+                # Save the PDF to the media model
+                media.id_proof.save(f"id_proof_{farmer.id}.pdf", pdf_file, save=False)
 
-#             # Handle ID type and ID number
-#             id_type = request.POST.get("id_type")
-#             id_number = request.POST.get("id_number")
-#             if id_type:
-#                 media.id_type = id_type
-#             if id_number:
-#                 media.id_number = id_number
+            # Handle ID type and ID number
+            id_type = request.POST.get("id_type")
+            id_number = request.POST.get("id_number")
+            if id_type:
+                media.id_type = id_type
+            if id_number:
+                media.id_number = id_number
 
-#             # Handle digital signature (base64 string from canvas)
-#             signature_data = request.POST.get("digital_signature")
-#             if signature_data and ';base64,' in signature_data:
-#                 format, imgstr = signature_data.split(';base64,')
-#                 ext = format.split('/')[-1]
-#                 signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
-#                 media.digital_signature.save(f"signature_{farmer.id}.{ext}", signature_file, save=False)
+            # Handle digital signature (base64 string from canvas)
+            signature_data = request.POST.get("digital_signature")
+            if signature_data and ';base64,' in signature_data:
+                format, imgstr = signature_data.split(';base64,')
+                ext = format.split('/')[-1]
+                signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
+                media.digital_signature.save(f"signature_{farmer.id}.{ext}", signature_file, save=False)
 
-#             # Save the media instance
-#             media.save()
+            # Save the media instance
+            media.save()
 
-#             return JsonResponse({
-#                 "success": True,
-#                 "message": "Farmer media uploaded successfully!",
-#                 "farmer_id": farmer_id
-#             })
+            return JsonResponse({
+                "success": True,
+                "message": "Farmer media uploaded successfully!",
+                "farmer_id": farmer_id
+            })
 
-#         except Exception as e:
-#             import traceback
-#             print(f"Error uploading media: {str(e)}")
-#             print(traceback.format_exc())
-#             return JsonResponse({
-#                 "success": False, 
-#                 "errors": str(e)
-#             }, status=400)
+        except Exception as e:
+            import traceback
+            print(f"Error uploading media: {str(e)}")
+            print(traceback.format_exc())
+            return JsonResponse({
+                "success": False, 
+                "errors": str(e)
+            }, status=400)
 
-#     return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
+    return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})

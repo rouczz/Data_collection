@@ -37,6 +37,7 @@ urlpatterns = [
     path("add-plantation/", add_plantation, name="add_plantation"),
     path("add-species/", add_species, name="add_species"),
     path("media-upload/", media_upload, name="media_upload"),
+    path("upload-media/", upload_media, name="upload_media"), 
 
 ]
 # Compare this snippet from KMcollect/data_collection/views.py: 

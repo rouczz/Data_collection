@@ -158,6 +158,10 @@ async function initDatabase() {
                 const speciesStore = db.createObjectStore('species', { keyPath: 'id', autoIncrement: true });
                 speciesStore.createIndex('plantationId', 'plantation_id'); // Index for querying species by plantation_id
             }
+            if (!db.objectStoreNames.contains('media')) {
+                const mediaStore = db.createObjectStore('media', { keyPath: 'id', autoIncrement: true });
+                mediaStore.createIndex('farmerId', 'farmer_id'); // Index for querying media by farmer_id
+            }
         }
     });
 }

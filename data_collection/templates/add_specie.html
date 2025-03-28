@@ -85,7 +85,7 @@
                 if (!usedPlantationIds.has(plantation.id)) { // Exclude used plantations
                     const option = document.createElement('option');
                     option.value = plantation.id;
-                    option.textContent = plantation.kyari_name; // Display plantation name
+                    option.textContent = plantation.plantation_name; // Display plantation name
                     plantationSelect.appendChild(option);
                     hasAvailablePlantations = true;
                 }

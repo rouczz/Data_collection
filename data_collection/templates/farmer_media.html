@@ -55,13 +55,11 @@
             <label class="form-label">ID Card Back (Capture or Upload)</label>
             <input type="file" id="idProofBack" name="id_proof_back" accept="image/*" capture="environment" class="form-control">
         </div>
-      
-    
 
         <!-- Land Ownership Document -->
         <div class="mb-3">
             <label class="form-label">Land Ownership Document (PDF/DOC)</label>
-            <input type="file" id="landOwnership" name="land_ownership" accept="image/*" class="form-control">
+            <input type="file" id="landOwnership" name="land_ownership" accept=".pdf,.doc,.docx" class="form-control">
         </div>
 
         <!-- Picture of Tree -->
@@ -83,371 +81,134 @@
     </form>
 </div>
 
-<!-- Signature Pad Script -->
+
 <script>
-// IndexedDB Utility Functions
-const IndexedDBService = {
-    async openDB() {
+    async function initDatabase() {
         if (typeof idb === 'undefined') {
-            throw new Error("idb library not available");
+            return Promise.reject(new Error("idb library not available"));
         }
         return idb.openDB('farmerApp', 1);
-    },
-
-    async getAllOfflineMedia() {
-        const db = await this.openDB();
-        const tx = db.transaction('media', 'readonly');
-        const mediaStore = tx.objectStore('media');
-        return await mediaStore.getAll();
-    },
-
-    async deleteMediaEntry(id) {
-        const db = await this.openDB();
-        const tx = db.transaction('media', 'readwrite');
-        const mediaStore = tx.objectStore('media');
-        await mediaStore.delete(id);
-        await tx.done;
     }
-};
 
-// API Sync Service
-const APISyncService = {
-    async uploadMediaToAPI(mediaData) {
-        // Convert base64 to FormData for API upload
-        const formData = new FormData();
-        
-        // Add all media fields to FormData
-        for (const [key, value] of Object.entries(mediaData)) {
-            if (value && (key.includes('_photo') || key.includes('_proof') || key === 'picture_of_tree' || key === 'land_ownership')) {
-                // Convert base64 to blob for file upload
-                try {
-                    const blob = await this.base64ToBlob(value);
-                    formData.append(key, blob, `${key}_file.png`);
-                } catch (error) {
-                    console.error(`Error converting ${key} to blob:`, error);
-                }
-            } else if (key !== 'id' && key !== 'timestamp') {
-                // Add other form fields
-                formData.append(key, value);
-            }
-        }
-
+    document.addEventListener('DOMContentLoaded', async () => {
         try {
-            const response = await fetch(`/upload-media/${mediaData.farmer_id}/`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            });
-
-            const result = await response.json();
-            return result.success;
-        } catch (error) {
-            console.error('API Upload Error:', error);
-            throw error;
-        }
-    },
-
-    async base64ToBlob(base64String) {
-        if (!base64String) return null;
-        
-        // Remove data URL prefix if present
-        const base64 = base64String.replace(/^data:image\/\w+;base64,/, '');
-        
-        // Convert base64 to blob
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        
-        const byteArray = new Uint8Array(byteNumbers);
-        return new Blob([byteArray], { type: 'image/png' });
-    }
-};
-
-// Utility function to get CSRF token
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-// Main Sync Manager
-const SyncManager = {
-    async syncOfflineMedia() {
-        try {
-            // Get all offline media entries
-            const offlineMedia = await IndexedDBService.getAllOfflineMedia();
-            
-            if (offlineMedia.length === 0) {
-                alert('No offline media to sync.');
+            // Extract farmer_id from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const farmerId = urlParams.get('farmer_id');
+            if (!farmerId) {
+                alert('Farmer ID is missing. Please start from the Farmer page.');
                 return;
             }
-
-            // Create sync status container
-            const syncStatusContainer = document.createElement('div');
-            syncStatusContainer.id = 'sync-status';
-            syncStatusContainer.innerHTML = `
-                <div style="background-color: white; padding: 20px; border: 1px solid #ddd; 
-                            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                            z-index: 1000; max-width: 500px; width: 100%; 
-                            box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                    <h3>Sync Offline Media</h3>
-                    <p>Total Entries: ${offlineMedia.length}</p>
-                    <div id="sync-progress-container"></div>
-                    <button id="close-sync-modal" class="btn btn-secondary mt-3">Close</button>
-                </div>
-            `;
-            
-            // Add to body
-            document.body.appendChild(syncStatusContainer);
-
-            // Progress container
-            const progressContainer = syncStatusContainer.querySelector('#sync-progress-container');
-
-            // Close button
-            syncStatusContainer.querySelector('#close-sync-modal').addEventListener('click', () => {
-                document.body.removeChild(syncStatusContainer);
-            });
-
-            // Sync each media entry
-            for (const [index, mediaEntry] of offlineMedia.entries()) {
-                // Create progress item
-                const progressItem = document.createElement('div');
-                progressItem.innerHTML = `
-                    Syncing entry ${index + 1}/${offlineMedia.length}...
-                `;
-                progressContainer.appendChild(progressItem);
-
-                try {
-                    // Attempt to upload to API
-                    const uploadSuccess = await APISyncService.uploadMediaToAPI(mediaEntry);
-                    
-                    if (uploadSuccess) {
-                        // If successful, remove from IndexedDB
-                        await IndexedDBService.deleteMediaEntry(mediaEntry.id);
-                        
-                        // Update progress
-                        progressItem.innerHTML = `
-                            ✅ Entry ${index + 1} synced successfully
-                        `;
-                        progressItem.style.color = 'green';
-                    } else {
-                        // Upload failed
-                        progressItem.innerHTML = `
-                            ❌ Entry ${index + 1} sync failed
-                        `;
-                        progressItem.style.color = 'red';
+    
+            // Initialize IndexedDB
+            const db = await initDatabase();
+    
+            // Handle form submission
+            document.getElementById('mediaUploadForm').addEventListener('submit', async (event) => {
+                event.preventDefault();
+    
+                // Collect form data
+                const formData = new FormData(event.target);
+    
+                // Convert FormData to a plain object
+                const mediaData = {
+                    farmer_id: parseInt(farmerId),
+                    timestamp: new Date().toISOString(),
+                    synced: false, // Mark as unsynced
+                };
+    
+                // Process each file input
+                const fileInputs = [
+                    'farmerPicture',
+                    'photoOfEnglishEpic',
+                    'photoOfRegionalLanguageEpic',
+                    'idProofFront',
+                    'idProofBack',
+                    'landOwnership',
+                    'pictureOfTree',
+                ];
+    
+                for (const inputName of fileInputs) {
+                    const fileInput = document.getElementById(inputName);
+                    const file = fileInput.files[0];
+                    if (file) {
+                        mediaData[inputName] = file; // Save file object
                     }
-                } catch (error) {
-                    // Network or other error
-                    progressItem.innerHTML = `
-                        ❌ Entry ${index + 1} sync failed: ${error.message}
-                    `;
-                    progressItem.style.color = 'red';
                 }
-            }
-
-            // Final message
-            const finalMessage = document.createElement('div');
-            finalMessage.innerHTML = 'Sync process completed.';
-            progressContainer.appendChild(finalMessage);
-
-        } catch (error) {
-            console.error('Sync process failed:', error);
-            alert('Failed to sync offline media. Please try again.');
-        }
-    }
-};
-
-// Modify the existing form submission to save to IndexedDB
-document.addEventListener("DOMContentLoaded", function () {
-    // Create sync button
-    const syncButton = document.createElement('button');
-    syncButton.id = 'sync-offline-media-btn';
-    syncButton.textContent = 'Sync Offline Media';
-    syncButton.className = 'btn btn-warning mt-3 mb-3 w-100';
-    syncButton.style.display = 'none'; // Initially hidden
-
-    // Add click event listener
-    syncButton.addEventListener('click', SyncManager.syncOfflineMedia);
-
-    // Check for offline media and show button if entries exist
-    async function checkOfflineMedia() {
-        try {
-            const offlineMedia = await IndexedDBService.getAllOfflineMedia();
-            if (offlineMedia.length > 0) {
-                syncButton.style.display = 'block';
-            }
-        } catch (error) {
-            console.error('Error checking offline media:', error);
-        }
-    }
-
-    // Attach sync button after form
-    const mediaUploadForm = document.getElementById('mediaUploadForm');
-    if (mediaUploadForm) {
-        mediaUploadForm.after(syncButton);
-        
-        // Check for offline media after form is loaded
-        checkOfflineMedia();
-    }
-
-    // Existing form submission code...
-    document.getElementById("mediaUploadForm").addEventListener("submit", async function (event) {
-        event.preventDefault();
-
-        const formData = new FormData(this);
-
-        // Validate required fields
-        const idProofFront = document.getElementById("idProofFront").files[0];
-        const idProofBack = document.getElementById("idProofBack").files[0];
-        const signatureData = document.getElementById("signatureData").value;
-
-        if (!idProofFront || !idProofBack) {
-            document.getElementById("message").innerHTML = `
-                <div class="alert alert-danger">
-                    Please upload both the front and back sides of the ID card.
-                </div>
-            `;
-            return;
-        }
-
-        // Show loading indicator and hide the form
-        document.getElementById("mediaUploadForm").style.display = "none";
-        document.getElementById("message").innerHTML = `
-            <div class="alert alert-info">
-                Uploading files, please wait...
-            </div>
-        `;
-
-        try {
-            // Attempt to upload to backend API
-            const response = await fetch("{% url 'upload_media' farmer.id %}", {
-                method: "POST",
-                body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
+    
+                // Add ID Type and ID Number
+                mediaData.id_type = document.getElementById('idType').value;
+                mediaData.id_number = document.getElementById('idNumber').value;
+    
+                // Add digital signature
+                const signatureData = document.getElementById('signatureData').value;
+                if (signatureData) {
+                    mediaData.digital_signature = signatureData;
+                }
+    
+                try {
+                    // Save media data to IndexedDB
+                    const tx = db.transaction('media', 'readwrite');
+                    await tx.store.add(mediaData); // Auto-generate ID
+                    await tx.done;
+    
+                    // Display success message with buttons
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-success">
+                            <p>✅ Farmer added successfully!</p>
+                            <button class="btn btn-primary mt-2" onclick="createNewFarmer()">➕ Create New Farmer</button>
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('Error saving media data:', error);
+                    alert('Failed to save media data. Please try again.');
+                }
             });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // API upload successful
-                document.getElementById("message").innerHTML = `
-                    <div class="alert alert-success mt-3">
-                        <p>✅ Media uploaded successfully!</p>
-                        <button id="addNewFarmerBtn" class="btn btn-primary mt-2">👨‍🌾 Add New Farmer</button>
-                    </div>
-                `;
-
-                // Add event listener for new farmer button
-                document.getElementById("addNewFarmerBtn").addEventListener("click", function () {
-                    window.location.href = location.origin + "/";
-                });
-            } else {
-                // API upload failed, save to IndexedDB
-                await handleApiFailure(formData);
-            }
+    
+            // Handle digital signature drawing
+            const canvas = document.getElementById('signatureCanvas');
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+    
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                ctx.beginPath();
+                ctx.moveTo(e.offsetX, e.offsetY);
+            });
+    
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDrawing) {
+                    ctx.lineTo(e.offsetX, e.offsetY);
+                    ctx.stroke();
+                }
+            });
+    
+            canvas.addEventListener('mouseup', () => {
+                isDrawing = false;
+                // Save signature data as base64
+                document.getElementById('signatureData').value = canvas.toDataURL();
+            });
+    
+            canvas.addEventListener('mouseleave', () => {
+                isDrawing = false;
+            });
+    
+            // Clear signature button
+            document.getElementById('clearSignature').addEventListener('click', () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('signatureData').value = '';
+            });
+    
         } catch (error) {
-            // Network error or other issue, save to IndexedDB
-            await handleApiFailure(formData);
+            console.error('Error loading data:', error);
+            alert('Failed to load data. Please refresh the page.');
         }
     });
-
-    // Handle API upload failure by saving to IndexedDB
-    async function handleApiFailure(formData) {
-        try {
-            // Prepare media data for IndexedDB
-            const mediaData = {
-                farmer_id: {{ farmer.id }}, // Django template variable for farmer ID
-                farmer_picture: await fileToBase64(formData.get('picture')),
-                english_epic_photo: await fileToBase64(formData.get('photo_of_english_epic')),
-                regional_epic_photo: await fileToBase64(formData.get('photo_of_regional_language_epic')),
-                id_type: formData.get('id_type'),
-                id_number: formData.get('id_number'),
-                id_proof_front: await fileToBase64(formData.get('id_proof_front')),
-                id_proof_back: await fileToBase64(formData.get('id_proof_back')),
-                land_ownership: await fileToBase64(formData.get('land_ownership')),
-                picture_of_tree: await fileToBase64(formData.get('picture_of_tree')),
-                digital_signature: document.getElementById("signatureData").value
-            };
-
-            // Save to IndexedDB
-            const mediaId = await saveMediaToIndexedDB(mediaData);
-
-            // Update message
-            document.getElementById("message").innerHTML = `
-                <div class="alert alert-warning mt-3">
-                    <p>⚠️ Upload failed. Data saved locally (Offline ID: ${mediaId})</p>
-                    <button id="addNewFarmerBtn" class="btn btn-primary mt-2">👨‍🌾 Add New Farmer</button>
-                </div>
-            `;
-
-            // Show sync button
-            const syncButton = document.getElementById('sync-offline-media-btn');
-            if (syncButton) {
-                syncButton.style.display = 'block';
-            }
-
-            // Add event listener for new farmer button
-            document.getElementById("addNewFarmerBtn").addEventListener("click", function () {
-                window.location.href = location.origin + "/";
-            });
-        } catch (error) {
-            console.error("Complete failure:", error);
-            document.getElementById("message").innerHTML = `
-                <div class="alert alert-danger">
-                    Failed to save media. Please check your connection and try again.
-                </div>
-            `;
-            document.getElementById("mediaUploadForm").style.display = "block";
-        }
+    
+    // Function to redirect to the create new farmer page
+    function createNewFarmer() {
+        window.location.href = '/create_farmer/';
     }
-
-    // Utility function to convert file to base64
-    async function fileToBase64(file) {
-        if (!file) return null;
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // Utility function to save to IndexedDB
-    async function saveMediaToIndexedDB(mediaData) {
-        try {
-            const db = await idb.openDB('farmerApp', 1);
-            const tx = db.transaction('media', 'readwrite');
-            const mediaStore = tx.objectStore('media');
-
-            // Add timestamp for tracking
-            mediaData.timestamp = new Date().getTime();
-
-            // Save the media entry
-            const mediaId = await mediaStore.add(mediaData);
-
-            await tx.done;
-            return mediaId;
-        } catch (error) {
-            console.error('Error saving media to IndexedDB:', error);
-            throw error;
-        }
-    }
-});
+    
 </script>
 {% endblock %}
