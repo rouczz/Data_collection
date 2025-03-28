@@ -1,46 +1,240 @@
 const CACHE_NAME = "farmer-app-v2";
-const STATIC_URLS = [
-    "/",
+const STATIC_CACHE_URLS = [
     "/create_farmer/",
     "/add-farm/",
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css", // Bootstrap CSS
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css", 
     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js",
-    "/static/js/farmer.js", // Farmer-specific JS
+    "/static/js/farmer.js", 
     "/static/js/farm.js",
-    "/static/css/style.css", // Custom CSS
-    "/static/offline.html", // Offline fallback page
+    "/static/css/style.css", 
+    "/static/offline.html", 
 ];
 
-// Install Event: Cache static assets
+// Debugging function
+function debugLog(message, ...args) {
+    console.log(`[SW Debug] ${message}`, ...args);
+}
+
 self.addEventListener("install", (event) => {
+    debugLog("Installing service worker");
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             return Promise.all(
-                STATIC_URLS.map(url => 
-                    cache.add(url).catch(err => {
-                        console.error(`Failed to cache ${url}:`, err.message);
-                    })
-                )
+                STATIC_CACHE_URLS.map(url => {
+                    return fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Cache-Control': 'no-cache'
+                        }
+                    }).then(response => {
+                        if (response.ok) {
+                            debugLog(`Caching ${url}`);
+                            return cache.put(url, response);
+                        }
+                        debugLog(`Failed to cache ${url}`);
+                        return Promise.resolve();
+                    }).catch(error => {
+                        debugLog(`Error caching ${url}:`, error);
+                        return Promise.resolve();
+                    });
+                })
             );
+        })
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+    debugLog("Activating service worker");
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        debugLog(`Deleting old cache: ${cacheName}`);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => {
+            debugLog("Claiming clients");
+            return self.clients.claim();
         })
     );
 });
 
-// Fetch Event: Serve cached resources when offline
 self.addEventListener("fetch", (event) => {
+    // Ignore non-GET requests and chrome-extension URLs
     if (event.request.method !== "GET" || event.request.url.startsWith("chrome-extension")) {
         return;
     }
 
+    // Special handling for HTML pages
+    if (event.request.headers.get('Accept')?.includes('text/html')) {
+        event.respondWith(
+            caches.open(CACHE_NAME).then((cache) => {
+                return fetch(event.request, {
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                }).then((networkResponse) => {
+                    // Only cache successful HTML responses
+                    if (networkResponse.ok && networkResponse.type === 'basic') {
+                        const responseToCache = networkResponse.clone();
+                        cache.put(event.request, responseToCache);
+                    }
+                    return networkResponse;
+                }).catch(() => {
+                    // Fallback to cached response
+                    return cache.match(event.request) || 
+                           caches.match("/static/offline.html") || 
+                           new Response('Offline', { 
+                               status: 503, 
+                               headers: { 'Content-Type': 'text/plain' } 
+                           });
+                });
+            })
+        );
+        return;
+    }
+
+    // Default fetch strategy for other resources
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-                return cachedResponse; // Serve from cache
-            }
-            return fetch(event.request).catch(() => caches.match("/static/offline.html"));
+            return cachedResponse || fetch(event.request);
         })
     );
 });
+// const CACHE_NAME = "farmer-app-v1";
+// const OFFLINE_URL = '/offline.html'
+// const STATIC_URLS = [
+//     "/create_farmer/",
+//     "/add-farm/",
+//     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css", 
+//     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js",
+//     "/static/js/farmer.js", 
+//     "/static/js/farm.js",
+//     "/static/css/style.css", 
+//     "/static/offline.html", 
+// ];
+
+// // install event
+// // Install event: cache static assets
+// self.addEventListener('install', event => {
+//     event.waitUntil(
+//       caches.open(CACHE_NAME)
+//         .then(cache => {
+//           console.log('Opened cache');
+//           return cache.addAll(STATIC_URLS);
+//         })
+//     );
+//   });
+  
+//   // Fetch event: serve from cache if possible
+//   self.addEventListener('fetch', event => {
+//     event.respondWith(
+//       caches.match(event.request)
+//         .then(response => {
+//           // If a cached file exists, return it; otherwise, fetch from network
+//           return response || fetch(event.request);
+//         })
+//     );
+//   });
+  
+//   // Activate event: cleanup old caches
+//   self.addEventListener('activate', event => {
+//     const cacheWhitelist = [CACHE_NAME];
+//     event.waitUntil(
+//       caches.keys().then(cacheNames => {
+//         return Promise.all(
+//           cacheNames.map(cacheName => {
+//             if (!cacheWhitelist.includes(cacheName)) {
+//               return caches.delete(cacheName);
+//             }
+//           })
+//         );
+//       })
+//     );
+//   });
+  
+// // Install Event: Comprehensive Caching
+// self.addEventListener("install", (event) => {
+//     console.log("[ServiceWorker] Install");
+//     event.waitUntil(
+//         caches.open(CACHE_NAME).then((cache) => {
+//             console.log("[ServiceWorker] Caching app shell");
+//             return cache.addAll(STATIC_URLS.map(url => new Request(url, { 
+//                 cache: 'no-cache',  // Ensure fresh network fetch
+//                 credentials: 'same-origin'  // Include credentials for same-origin requests
+//             })));
+//         }).catch(error => {
+//             console.error("[ServiceWorker] Caching failed:", error);
+//         })
+//     );
+    
+//     // Force the waiting service worker to become active
+//     self.skipWaiting();
+// });
+
+// // Activate Event: Clean up old caches and claim clients
+// self.addEventListener("activate", (event) => {
+//     console.log("[ServiceWorker] Activate");
+//     event.waitUntil(
+//         caches.keys().then((cacheNames) => {
+//             return Promise.all(
+//                 cacheNames.map((cacheName) => {
+//                     if (cacheName !== CACHE_NAME) {
+//                         console.log("[ServiceWorker] Removing old cache:", cacheName);
+//                         return caches.delete(cacheName);
+//                     }
+//                 })
+//             );
+//         }).then(() => {
+//             console.log("[ServiceWorker] Claiming clients");
+//             return self.clients.claim();
+//         })
+//     );
+// });
+
+// // Fetch Event: Advanced Network-First Strategy
+// self.addEventListener("fetch", (event) => {
+//     // Ignore non-GET requests and chrome-extension URLs
+//     if (event.request.method !== "GET" || event.request.url.startsWith("chrome-extension")) {
+//         return;
+//     }
+
+//     event.respondWith(
+//         // Network-first strategy with cache fallback
+//         fetch(event.request).catch(() => {
+//             // If network request fails, try cache
+//             return caches.match(event.request).then((response) => {
+//                 if (response) {
+//                     return response;
+//                 }
+                
+//                 // If specific request not in cache, handle differently based on Accept header
+//                 if (event.request.headers.get('Accept').includes('text/html')) {
+//                     // Fallback to offline page for HTML requests
+//                     return caches.match("/static/offline.html");
+//                 }
+                
+//                 // For other resources, return a network error response
+//                 return new Response('Offline', { 
+//                     status: 503, 
+//                     headers: { 'Content-Type': 'text/plain' } 
+//                 });
+//             });
+//         })
+//     );
+// });
+
+// // Handle PWA install prompt
+// self.addEventListener('beforeinstallprompt', (event) => {
+//     console.log("[ServiceWorker] Install prompt prevented");
+//     event.preventDefault();
+//     // Optionally store the event for later use
+//     self.deferredPrompt = event;
+// });
 
 // const CACHE_NAME = "kisanmitra-cache-v1";
 // const STATIC_URLS = [

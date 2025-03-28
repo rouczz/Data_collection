@@ -6,7 +6,13 @@ from django.contrib.gis.geos import GEOSGeometry
 from .models import *
 from django.template.loader import render_to_string
 from django.http import HttpResponse
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
+from django.views.decorators.cache import cache_control
+from django.views.decorators.vary import vary_on_cookie
 
+@cache_control(public=True, max_age=3600)
+@vary_on_cookie
 def create_farmer(request):
     return render(request, "data_collection/templates/create_farmer.html")
 def add_farm(request):

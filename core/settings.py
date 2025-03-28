@@ -207,3 +207,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Allow local development (if needed)
 ]
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}

@@ -78,40 +78,12 @@
     <!-- Load Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/service-worker.js')
-                .then(registration => {
-                    console.log('Service Worker Registered:', registration);
-                    
-                    // Check service worker state
-                    console.log('Service Worker State:', registration.active ? 'Active' : 'Inactive');
-                    
-                    // Listen for updates
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        console.log('New service worker found');
-                        
-                        newWorker.addEventListener('statechange', () => {
-                            console.log('Service Worker State Changed:', newWorker.state);
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error('Service Worker Registration Failed:', error);
-                });
-        
-            // Optional: Check cache contents
-            caches.keys().then(cacheNames => {
-                console.log('Existing Caches:', cacheNames);
-                
-                cacheNames.forEach(cacheName => {
-                    caches.open(cacheName).then(cache => {
-                        cache.keys().then(requests => {
-                            console.log(`Cache ${cacheName} contents:`, 
-                                requests.map(request => request.url)
-                            );
-                        });
-                    });
-                });
+          navigator.serviceWorker.register("{% static 'service-worker.js' %}")
+            .then(registration => {
+              console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch(error => {
+              console.error('Service Worker registration failed:', error);
             });
         }
     </script>
