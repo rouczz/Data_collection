@@ -5,6 +5,8 @@
     <h2 class="mb-3 text-primary">Upload Media for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
     <!-- Success/Error Message Placeholder -->
     <div id="message"></div>
+    <!-- Sync Button -->
+    <button id="syncMediaBtn" class="btn btn-info w-100 mb-3">Sync Media</button>
     <!-- Media Upload Form -->
     <form id="mediaUploadForm" method="post" enctype="multipart/form-data" class="card p-4 shadow">
         {% csrf_token %}
@@ -83,132 +85,224 @@
 
 
 <script>
-    async function initDatabase() {
-        if (typeof idb === 'undefined') {
-            return Promise.reject(new Error("idb library not available"));
-        }
-        return idb.openDB('farmerApp', 1);
-    }
+// Global variable for IndexedDB database
+let db;
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            // Extract farmer_id from the URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const farmerId = urlParams.get('farmer_id');
-            if (!farmerId) {
-                alert('Farmer ID is missing. Please start from the Farmer page.');
-                return;
+// Initialize IndexedDB
+async function initDatabase() {
+    if (typeof idb === 'undefined') {
+        return Promise.reject(new Error("idb library not available"));
+    }
+    return idb.openDB('farmerApp', 1, {
+        upgrade(db, oldVersion) {
+            if (!db.objectStoreNames.contains('farmers')) {
+                db.createObjectStore('farmers', { keyPath: 'id', autoIncrement: true });
             }
-    
-            // Initialize IndexedDB
-            const db = await initDatabase();
-    
-            // Handle form submission
-            document.getElementById('mediaUploadForm').addEventListener('submit', async (event) => {
-                event.preventDefault();
-    
-                // Collect form data
-                const formData = new FormData(event.target);
-    
-                // Convert FormData to a plain object
-                const mediaData = {
-                    farmer_id: parseInt(farmerId),
-                    timestamp: new Date().toISOString(),
-                    synced: false, // Mark as unsynced
-                };
-    
-                // Process each file input
-                const fileInputs = [
-                    'farmerPicture',
-                    'photoOfEnglishEpic',
-                    'photoOfRegionalLanguageEpic',
-                    'idProofFront',
-                    'idProofBack',
-                    'landOwnership',
-                    'pictureOfTree',
-                ];
-    
-                for (const inputName of fileInputs) {
-                    const fileInput = document.getElementById(inputName);
-                    const file = fileInput.files[0];
-                    if (file) {
-                        mediaData[inputName] = file; // Save file object
-                    }
-                }
-    
-                // Add ID Type and ID Number
-                mediaData.id_type = document.getElementById('idType').value;
-                mediaData.id_number = document.getElementById('idNumber').value;
-    
-                // Add digital signature
-                const signatureData = document.getElementById('signatureData').value;
-                if (signatureData) {
-                    mediaData.digital_signature = signatureData;
-                }
-    
-                try {
-                    // Save media data to IndexedDB
-                    const tx = db.transaction('media', 'readwrite');
-                    await tx.store.add(mediaData); // Auto-generate ID
-                    await tx.done;
-    
-                    // Display success message with buttons
-                    document.getElementById('message').innerHTML = `
-                        <div class="alert alert-success">
-                            <p>✅ Farmer added successfully!</p>
-                            <button class="btn btn-primary mt-2" onclick="createNewFarmer()">➕ Create New Farmer</button>
-                        </div>
-                    `;
-                } catch (error) {
-                    console.error('Error saving media data:', error);
-                    alert('Failed to save media data. Please try again.');
-                }
-            });
-    
-            // Handle digital signature drawing
-            const canvas = document.getElementById('signatureCanvas');
-            const ctx = canvas.getContext('2d');
-            let isDrawing = false;
-    
-            canvas.addEventListener('mousedown', (e) => {
-                isDrawing = true;
-                ctx.beginPath();
-                ctx.moveTo(e.offsetX, e.offsetY);
-            });
-    
-            canvas.addEventListener('mousemove', (e) => {
-                if (isDrawing) {
-                    ctx.lineTo(e.offsetX, e.offsetY);
-                    ctx.stroke();
-                }
-            });
-    
-            canvas.addEventListener('mouseup', () => {
-                isDrawing = false;
-                // Save signature data as base64
-                document.getElementById('signatureData').value = canvas.toDataURL();
-            });
-    
-            canvas.addEventListener('mouseleave', () => {
-                isDrawing = false;
-            });
-    
-            // Clear signature button
-            document.getElementById('clearSignature').addEventListener('click', () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                document.getElementById('signatureData').value = '';
-            });
-    
-        } catch (error) {
-            console.error('Error loading data:', error);
-            alert('Failed to load data. Please refresh the page.');
+            if (!db.objectStoreNames.contains('farms')) {
+                const farmStore = db.createObjectStore('farms', { keyPath: 'id', autoIncrement: true });
+                farmStore.createIndex('farmerId', 'farmer_id'); // Index for querying farms by farmer_id
+            }
+            if (!db.objectStoreNames.contains('plantations')) {
+                const plantationStore = db.createObjectStore('plantations', { keyPath: 'id', autoIncrement: true });
+                plantationStore.createIndex('farmId', 'farm_id'); // Index for querying plantations by farm_id
+            }
+            if (!db.objectStoreNames.contains('species')) {
+                const speciesStore = db.createObjectStore('species', { keyPath: 'id', autoIncrement: true });
+                speciesStore.createIndex('plantationId', 'plantation_id'); // Index for querying species by plantation_id
+            }
+            if (!db.objectStoreNames.contains('media')) {
+                const mediaStore = db.createObjectStore('media', { keyPath: 'id', autoIncrement: true });
+                mediaStore.createIndex('farmerId', 'farmer_id'); // Index for querying media by farmer_id
+            }
         }
     });
-    
-    // Function to redirect to the create new farmer page
-    function createNewFarmer() {
-        window.location.href = '/create_farmer/';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Extract farmer_id from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const farmerId = urlParams.get('farmer_id');
+        if (!farmerId) {
+            alert('Farmer ID is missing. Please start from the Farmer page.');
+            return;
+        }
+
+        // Initialize IndexedDB
+        db = await initDatabase();
+
+        // Handle form submission
+        document.getElementById('mediaUploadForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            // Collect form data
+            const formData = new FormData(event.target);
+
+            // Convert FormData to a plain object
+            const mediaData = {
+                farmer_id: parseInt(farmerId),
+                timestamp: new Date().toISOString(),
+                synced: false, // Mark as unsynced
+            };
+
+            // Process each file input
+            const fileInputs = [
+                'farmerPicture',
+                'photoOfEnglishEpic',
+                'photoOfRegionalLanguageEpic',
+                'idProofFront',
+                'idProofBack',
+                'landOwnership',
+                'pictureOfTree',
+            ];
+
+            for (const inputName of fileInputs) {
+                const fileInput = document.getElementById(inputName);
+                const file = fileInput.files[0];
+                if (file) {
+                    mediaData[inputName] = file; // Save file object
+                }
+            }
+
+            // Add ID Type and ID Number
+            mediaData.id_type = document.getElementById('idType').value;
+            mediaData.id_number = document.getElementById('idNumber').value;
+
+            // Add digital signature
+            const signatureData = document.getElementById('signatureData').value;
+            if (signatureData) {
+                mediaData.digital_signature = signatureData;
+            }
+
+            try {
+                // Save media data to IndexedDB
+                const tx = db.transaction('media', 'readwrite');
+                await tx.store.add(mediaData); // Auto-generate ID
+                await tx.done;
+
+                // Display success message with buttons
+                document.getElementById('message').innerHTML = `
+                    <div class="alert alert-success">
+                        <p>✅ Farmer added successfully!</p>
+                        <button class="btn btn-primary mt-2" onclick="createNewFarmer()">➕ Create New Farmer</button>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error saving media data:', error);
+                alert('Failed to save media data. Please try again.');
+            }
+        });
+
+        // Handle digital signature drawing
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+            // Save signature data as base64
+            document.getElementById('signatureData').value = canvas.toDataURL();
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+        });
+
+        // Clear signature button
+        document.getElementById('clearSignature').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('signatureData').value = '';
+        });
+
+        // Handle Sync Button Click
+        document.getElementById('syncMediaBtn').addEventListener('click', async () => {
+            try {
+                // Fetch all unsynced media entries
+                const tx = db.transaction('media', 'readonly');
+                const mediaEntries = await tx.store.getAll();
+                await tx.done;
+
+                const unsyncedMedia = mediaEntries.filter(media => !media.synced);
+
+                if (unsyncedMedia.length === 0) {
+                    alert('No unsynced media found.');
+                    return;
+                }
+
+                // Sync each unsynced media entry
+                for (const media of unsyncedMedia) {
+                    const formData = new FormData();
+
+                    // Add files to FormData
+                    if (media.farmerPicture) formData.append('picture', media.farmerPicture);
+                    if (media.photoOfEnglishEpic) formData.append('photo_of_english_epic', media.photoOfEnglishEpic);
+                    if (media.photoOfRegionalLanguageEpic) formData.append('photo_of_regional_language_epic', media.photoOfRegionalLanguageEpic);
+                    if (media.idProofFront) formData.append('id_proof_front', media.idProofFront);
+                    if (media.idProofBack) formData.append('id_proof_back', media.idProofBack);
+                    if (media.landOwnership) formData.append('land_ownership', media.landOwnership);
+                    if (media.pictureOfTree) formData.append('picture_of_tree', media.pictureOfTree);
+                    if (media.digital_signature) formData.append('digital_signature', media.digital_signature);
+
+                    // Add metadata to FormData
+                    if (media.id_type) formData.append('id_type', media.id_type);
+                    if (media.id_number) formData.append('id_number', media.id_number);
+
+                    // Add farmer_id to FormData
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const farmerId = urlParams.get('farmer_id');
+                    if (!farmerId) {
+                        alert('Farmer ID is missing. Cannot proceed with sync.');
+                        return;
+                    }
+                    formData.append('farmer_id', farmerId);
+
+                    // Send data to the backend
+                    const response = await fetch('/upload-media/', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        // Mark media as synced in IndexedDB
+                        const updateTx = db.transaction('media', 'readwrite');
+                        const storedMedia = await updateTx.store.get(media.id);
+                        storedMedia.synced = true;
+                        await updateTx.store.put(storedMedia);
+                        await updateTx.done;
+                    } else {
+                        throw new Error('Failed to sync media.');
+                    }
+                }
+
+                alert('All media synced successfully.');
+            } catch (error) {
+                console.error('Error syncing media:', error);
+                alert('Failed to sync media. Please try again.');
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading data:', error);
+        alert('Failed to load data. Please refresh the page.');
     }
-    
+});
+
+// Function to redirect to the create new farmer page
+function createNewFarmer() {
+    window.location.href = '/create_farmer/';
+}
 </script>
 {% endblock %}

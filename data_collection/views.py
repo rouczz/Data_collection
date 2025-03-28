@@ -567,11 +567,126 @@ def generate_pdf_from_images(front_image, back_image):
     return pdf_buffer
 
 
-def upload_media(request, farmer_id):
-    farmer = get_object_or_404(Farmer, id=farmer_id)
+# def upload_media(request, farmer_id):
+#     farmer = get_object_or_404(Farmer, id=farmer_id)
 
+#     if request.method == "POST":
+#         try:
+#             # Create a new FarmerMedia instance
+#             media = FarmerMedia(farmer=farmer)
+
+#             # Process and optimize profile picture
+#             if "picture" in request.FILES:
+#                 optimized = optimize_image(request.FILES["picture"])
+#                 media.picture.save(f"picture_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
+#             # Handle English EPIC
+#             if "photo_of_english_epic" in request.FILES:
+#                 english_epic = request.FILES["photo_of_english_epic"]
+#                 # Create both optimized image and PDF version
+#                 optimized = optimize_image(english_epic)
+#                 media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
+#                 # Generate PDF for English EPIC
+#                 english_epic.seek(0)  # Reset file pointer
+#                 pdf_buffer = generate_pdf_from_image(english_epic)
+#                 media.english_epic_pdf.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                
+#             # Handle Regional EPIC
+#             if "photo_of_regional_language_epic" in request.FILES:
+#                 regional_epic = request.FILES["photo_of_regional_language_epic"]
+#                 # Create both optimized image and PDF version
+#                 optimized = optimize_image(regional_epic)
+#                 media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
+#                 # Generate PDF for Regional EPIC
+#                 regional_epic.seek(0)  # Reset file pointer
+#                 pdf_buffer = generate_pdf_from_image(regional_epic)
+#                 media.regional_epic_pdf.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                
+#             # Handle Land Ownership document
+#             if "land_ownership" in request.FILES:
+#                 land_doc = request.FILES["land_ownership"]
+#                 # Create both optimized image and PDF version
+#                 optimized = optimize_image(land_doc)
+#                 # media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                
+#                 # Generate PDF for Land Ownership
+#                 land_doc.seek(0)  # Reset file pointer
+#                 pdf_buffer = generate_pdf_from_image(land_doc)
+#                 media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                
+#             # Handle Tree picture
+#             if "picture_of_tree" in request.FILES:
+#                 optimized = optimize_image(request.FILES["picture_of_tree"])
+#                 media.picture_of_tree.save(f"tree_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+
+#             # Handle ID proof generation
+#             front_image = request.FILES.get("id_proof_front")
+#             back_image = request.FILES.get("id_proof_back")
+#             if front_image and back_image:
+#                 # Generate PDF from the uploaded images
+#                 pdf_buffer = generate_pdf_from_images(front_image, back_image)
+#                 pdf_file = ContentFile(pdf_buffer.read(), name=f"id_proof_{farmer.id}.pdf")
+
+#                 # Save the PDF to the media model
+#                 media.id_proof.save(f"id_proof_{farmer.id}.pdf", pdf_file, save=False)
+
+#             # Handle ID type and ID number
+#             id_type = request.POST.get("id_type")
+#             id_number = request.POST.get("id_number")
+#             if id_type:
+#                 media.id_type = id_type
+#             if id_number:
+#                 media.id_number = id_number
+
+#             # Handle digital signature (base64 string from canvas)
+#             signature_data = request.POST.get("digital_signature")
+#             if signature_data and ';base64,' in signature_data:
+#                 format, imgstr = signature_data.split(';base64,')
+#                 ext = format.split('/')[-1]
+#                 signature_file = ContentFile(base64.b64decode(imgstr), name=f"signature_{farmer.id}.{ext}")
+#                 media.digital_signature.save(f"signature_{farmer.id}.{ext}", signature_file, save=False)
+
+#             # Save the media instance
+#             media.save()
+
+#             return JsonResponse({
+#                 "success": True,
+#                 "message": "Farmer media uploaded successfully!",
+#                 "farmer_id": farmer_id
+#             })
+
+#         except Exception as e:
+#             import traceback
+#             print(f"Error uploading media: {str(e)}")
+#             print(traceback.format_exc())
+#             return JsonResponse({
+#                 "success": False, 
+#                 "errors": str(e)
+#             }, status=400)
+
+#     return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
+
+# views.py
+from django.http import JsonResponse
+from django.core.files.base import ContentFile
+from django.shortcuts import get_object_or_404
+import base64
+from .models import Farmer, FarmerMedia
+from django.views.decorators.csrf import csrf_exempt
+@csrf_exempt
+def upload_media(request):
     if request.method == "POST":
         try:
+            # Extract farmer_id from the request body
+            farmer_id = request.POST.get("farmer_id")
+            if not farmer_id:
+                return JsonResponse({"success": False, "errors": "Farmer ID is missing."}, status=400)
+
+            # Get the farmer object
+            farmer = get_object_or_404(Farmer, id=farmer_id)
+
             # Create a new FarmerMedia instance
             media = FarmerMedia(farmer=farmer)
 
@@ -585,35 +700,30 @@ def upload_media(request, farmer_id):
                 english_epic = request.FILES["photo_of_english_epic"]
                 # Create both optimized image and PDF version
                 optimized = optimize_image(english_epic)
-                media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                # media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
                 # Generate PDF for English EPIC
                 english_epic.seek(0)  # Reset file pointer
                 pdf_buffer = generate_pdf_from_image(english_epic)
-                media.english_epic_pdf.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                media.photo_of_english_epic.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Regional EPIC
             if "photo_of_regional_language_epic" in request.FILES:
                 regional_epic = request.FILES["photo_of_regional_language_epic"]
                 # Create both optimized image and PDF version
                 optimized = optimize_image(regional_epic)
-                media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                # media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
                 # Generate PDF for Regional EPIC
                 regional_epic.seek(0)  # Reset file pointer
                 pdf_buffer = generate_pdf_from_image(regional_epic)
-                media.regional_epic_pdf.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Land Ownership document
             if "land_ownership" in request.FILES:
                 land_doc = request.FILES["land_ownership"]
                 # Create both optimized image and PDF version
                 optimized = optimize_image(land_doc)
-                # media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
-                
-                # Generate PDF for Land Ownership
-                land_doc.seek(0)  # Reset file pointer
-                pdf_buffer = generate_pdf_from_image(land_doc)
                 media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Tree picture
@@ -666,4 +776,4 @@ def upload_media(request, farmer_id):
                 "errors": str(e)
             }, status=400)
 
-    return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
+    return JsonResponse({"success": False, "errors": "Invalid request method."}, status=405)
