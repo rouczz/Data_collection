@@ -16,7 +16,7 @@ def fetch_data_from_external_api(url):
         "Authorization": f"Bearer {API_TOKEN}",
         "X-Client-ID": X_CLIENT_ID,
     }
-    response = requests.get(url, headers=headers)
+    response = requests.get(url)
     if response.status_code == 200:
         return response.json()
     else:

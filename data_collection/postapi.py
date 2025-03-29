@@ -394,6 +394,7 @@ def push_farms_to_vaarha(farm):
         },
         "metadata": {}
     }
+    print(farm_payload)
     response = requests.post(f"{VAARHA_API_BASE_URL}/plantation/agfarm/create/", json=farm_payload, headers=HEADERS)
     if response.status_code == 201:
         farm_data = response.json()

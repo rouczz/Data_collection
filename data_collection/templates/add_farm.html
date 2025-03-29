@@ -410,11 +410,11 @@
             let messageDiv = document.getElementById("message");
             if (data.success) {
                 messageDiv.innerHTML = `
-                    <div class="alert alert-success">
+                    <div class="alert alert-success mt-3">
                         <p>✅ Farm created successfully!</p>
-                        <button class="btn btn-primary mt-2" onclick="addAnotherFarm()">➕ Add Another Farm</button>
-                        <button class="btn btn-success mt-2" onclick="proceedToPlantation(${data.farmer_id})">
-                            🌱 Proceed to Plantation
+                        <button id="addAnotherFarmBtn" class="btn btn-primary mt-2" >➕ Add Another Farm</button>
+                        <button id="proceedToPlantation" class="btn btn-success mt-2">
+                        🌱 Proceed to Plantation
                         </button>
                     </div>
                 `;
@@ -422,6 +422,12 @@
                 document.getElementById("farmForm").style.display = "none";
                 // Refresh farms list and map
                 fetchExistingFarms();
+                document.getElementById("addAnotherFarmBtn").addEventListener("click", addAnotherFarm);
+
+                document.getElementById("proceedToPlantation").addEventListener("click", function() {
+                    
+                    proceedToPlantation(data.farmer_id ||{{ farmer.id }});
+                });
             } else {
                 messageDiv.innerHTML = `<p style='color: red;'>❌ Error: ${JSON.stringify(data.errors)}</p>`;
             }

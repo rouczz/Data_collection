@@ -51,7 +51,7 @@ def add_farm(request, farmer_id):
         else:
             return JsonResponse({"success": False, "errors": form.errors})
 
-    return render(request, "data_collection/templates/add_farm.html", {"form": FarmForm(), "farmer": farmer})
+    return render(request, "data_collection/templates/add_farm.html", {"form": FarmForm(), "farmer": farmer,  "farmer_id": farmer.id})
 
 
 # def add_plantation(request, farm_id):
