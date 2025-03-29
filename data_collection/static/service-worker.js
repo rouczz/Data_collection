@@ -1,27 +1,9 @@
 const CACHE_NAME = "kisanmitra-cache-v4";
 const urlsToCache = [
   "/",
-  // "/create_farmer/",
-  // "/add_farm/:farmer_id/",
-  // "/api/farms/:farmer_id/",
-  // "/add-plantation/:farmer_id/",
-  // "/add-species/:farmer_id/",
-  // "/dashboard-data/:farmer_id/",
-  // "/dashboard-farmers/",
-  // "/dashboard/",
-  // "/get-plantations/:farm_id/",
-  // "/upload-media/:farmer_id/",
-  "/static/css/style.css",
-  "/static/js/app.js",
-  "/static/icons/image.png",
-  "/static/icons/image copy.png",
-  // "/offline.html",
-  // '/static/css/bootstrap.min.css',
-  // '/static/js/bootstrap.bundle.min.js',
-  'https://unpkg.com/leaflet@1.9.3/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.3/dist/leaflet.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/idb/7.1.1/idb.min.js',
-
+  "/static/icons/image.png",        // 192x192 icon
+  "/static/icons/image%20copy.png", // 512x512 icon (note encoded space)
+  
 ];
 
 // Install Event: Cache Static Assets

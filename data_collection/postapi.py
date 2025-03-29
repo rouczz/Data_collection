@@ -445,6 +445,7 @@ def push_plantations_to_vaarha(plantation):
     response = requests.post(f"{VAARHA_API_BASE_URL}/plantation/agkyari/create/", json=plantation_payload, headers=HEADERS)
     if response.status_code == 201:
         plantation_data = response.json()
+        print("Plantation data:", plantation_data)
         plantation.vaarha_id = plantation_data["id"]
         plantation.save()
 
@@ -470,6 +471,7 @@ def push_species_to_vaarha(specie):
     response = requests.post(f"{VAARHA_API_BASE_URL}/agkyari/specie/create/", json=specie_payload, headers=HEADERS)
     if response.status_code == 201:
         specie_data = response.json()
+        print("specie resposne",specie_data)
         specie.vaarha_id = specie_data["id"]
         specie.save()
     return response

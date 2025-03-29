@@ -86,66 +86,235 @@
 <!-- Signature Pad Script -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        // ============== ENHANCED SIGNATURE PAD CODE ==============
         const canvas = document.getElementById("signatureCanvas");
         const ctx = canvas.getContext("2d");
-    
-        // Adjust for high-DPI displays
+        const signatureContainer = document.createElement('div');
+        signatureContainer.style.position = 'relative';
+        canvas.parentNode.insertBefore(signatureContainer, canvas);
+        signatureContainer.appendChild(canvas);
+        
+        // Add signature instructions
+        const instructions = document.createElement('div');
+        instructions.innerHTML = '<small class="text-muted">Sign with your finger or stylus</small>';
+        signatureContainer.insertBefore(instructions, canvas);
+        
+        // Add a "Sign Here" watermark for empty canvas
+        function drawWatermark() {
+            ctx.save();
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#cccccc";
+            ctx.fillText("Sign Here", canvas.width / (2 * dpr), canvas.height / (2 * dpr));
+            ctx.restore();
+        }
+        
+        // Adjust for high-DPI displays and properly set dimensions
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = canvas.offsetWidth * dpr;
-        canvas.height = canvas.offsetHeight * dpr;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Mobile-specific styling
+        if (isMobile) {
+            // Make canvas bigger on small screens for easier signing
+            canvas.style.height = "150px";
+        }
+        
+        // Get the correct dimensions from CSS
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
-    
+        
+        // Set up signature stroke style
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "#000000";
+        
         let isDrawing = false;
-    
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Draw watermark initially
+        drawWatermark();
+        
+        // Prevent scrolling when touching the canvas on mobile
+        canvas.addEventListener('touchstart', function(e) {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        canvas.addEventListener('touchmove', function(e) {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
         // Start drawing
-        canvas.addEventListener("mousedown", startDrawing);
-        canvas.addEventListener("touchstart", startDrawing);
-    
         function startDrawing(e) {
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            // Clear watermark on first draw
+            if (document.getElementById("signatureData").value === "") {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Get coordinates
+            let clientX, clientY;
+            if (e.type === 'touchstart' || e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            lastX = (clientX - rect.left) * (canvas.width / rect.width);
+            lastY = (clientY - rect.top) * (canvas.height / rect.height);
+            
             ctx.beginPath();
-            ctx.moveTo(x, y);
+            ctx.moveTo(lastX / dpr, lastY / dpr);
         }
-    
+        
         // Continue drawing
-        canvas.addEventListener("mousemove", draw);
-        canvas.addEventListener("touchmove", draw);
-    
         function draw(e) {
             if (!isDrawing) return;
+            
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            ctx.lineTo(x, y);
+            let clientX, clientY;
+            if (e.type === 'touchstart' || e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            const currentX = (clientX - rect.left) * (canvas.width / rect.width);
+            const currentY = (clientY - rect.top) * (canvas.height / rect.height);
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX / dpr, lastY / dpr);
+            ctx.lineTo(currentX / dpr, currentY / dpr);
             ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
         }
-    
+        
         // Stop drawing
-        canvas.addEventListener("mouseup", stopDrawing);
-        canvas.addEventListener("touchend", stopDrawing);
-    
         function stopDrawing() {
-            isDrawing = false;
-            ctx.closePath();
-            // Save the signature as a base64-encoded image
-            document.getElementById("signatureData").value = canvas.toDataURL("image/png");
+            if (isDrawing) {
+                isDrawing = false;
+                ctx.closePath();
+                
+                // Save the signature as a base64-encoded image
+                const signatureData = canvas.toDataURL("image/png");
+                document.getElementById("signatureData").value = signatureData;
+                
+                // Add visual feedback that signature was saved
+                instructions.innerHTML = '<small class="text-success">✓ Signature saved</small>';
+                setTimeout(() => {
+                    instructions.innerHTML = '<small class="text-muted">Sign with your finger or stylus</small>';
+                }, 1500);
+            }
         }
-    
-        // Clear the canvas
+        
+        // Handle touch events for mobile
+        canvas.addEventListener("touchstart", startDrawing, false);
+        canvas.addEventListener("touchmove", draw, false);
+        canvas.addEventListener("touchend", stopDrawing, false);
+        
+        // Handle mouse events for desktop
+        canvas.addEventListener("mousedown", startDrawing, false);
+        canvas.addEventListener("mousemove", draw, false);
+        canvas.addEventListener("mouseup", stopDrawing, false);
+        canvas.addEventListener("mouseout", stopDrawing, false);
+        
+        // Clear button functionality
         document.getElementById("clearSignature").addEventListener("click", function () {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.getElementById("signatureData").value = "";
+            drawWatermark();
+            instructions.innerHTML = '<small class="text-muted">Sign with your finger or stylus</small>';
+        });
+        
+        // ============== REST OF YOUR SCRIPT FOLLOWS ==============
+        // Image compression function
+        function compressImage(file, quality, maxWidth, callback) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    // Calculate new dimensions while maintaining aspect ratio
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxWidth) {
+                        height = (maxWidth / width) * height;
+                        width = maxWidth;
+                    }
+                    
+                    // Create canvas and context
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Draw and compress image
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to Blob
+                    canvas.toBlob(function(blob) {
+                        // Create new File object
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        callback(compressedFile);
+                    }, 'image/jpeg', quality);
+                };
+            };
+        }
+    
+        // Add compression to all image inputs
+        const imageInputs = document.querySelectorAll('input[type="file"][accept*="image"]');
+        
+        imageInputs.forEach(input => {
+            input.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Skip if not an image
+                if (!file.type.startsWith('image/')) return;
+                
+                // Show loading indicator for this input
+                const label = this.previousElementSibling;
+                const originalLabelText = label.textContent;
+                label.textContent = `${originalLabelText} (Compressing...)`;
+                
+                compressImage(file, 0.6, 1280, (compressedFile) => {
+                    // Create a new file list with the compressed image
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(compressedFile);
+                    this.files = dataTransfer.files;
+                    
+                    // Restore original label and indicate compression
+                    label.textContent = originalLabelText;
+                    
+                    console.log(`Compressed ${file.name} from ${Math.round(file.size/1024)}KB to ${Math.round(compressedFile.size/1024)}KB`);
+                });
+            });
         });
     
-        // Form Submission Handler
+        // ============== FORM SUBMISSION ==============
         document.getElementById("mediaUploadForm").addEventListener("submit", function (event) {
             event.preventDefault();
-    
-            const formData = new FormData(this);
-    
+            
             // Validate required fields
             const idProofFront = document.getElementById("idProofFront").files[0];
             const idProofBack = document.getElementById("idProofBack").files[0];
@@ -168,8 +337,11 @@
                 </div>
             `;
     
+            // Create FormData object
+            const formData = new FormData(this);
+            
             // Send AJAX request
-            fetch("{% url 'upload_media' farmer.id %}", {
+            fetch(this.action || window.location.href, {
                 method: "POST",
                 body: formData,
                 headers: { "X-Requested-With": "XMLHttpRequest" }
@@ -188,8 +360,6 @@
                     document.getElementById("addNewFarmerBtn").addEventListener("click", function () {
                         window.location.href = location.origin + "/";
                     });
-    
-
                 } else {
                     document.getElementById("message").innerHTML = `
                         <div class="alert alert-danger">

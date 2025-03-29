@@ -561,48 +561,48 @@ def upload_media(request, farmer_id):
 
             # Process and optimize profile picture
             if "picture" in request.FILES:
-                optimized = optimize_image(request.FILES["picture"])
+                optimized = (request.FILES["picture"])
                 media.picture.save(f"picture_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
             # Handle English EPIC
             if "photo_of_english_epic" in request.FILES:
                 english_epic = request.FILES["photo_of_english_epic"]
                 # Create both optimized image and PDF version
-                optimized = optimize_image(english_epic)
-                media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                optimized = (english_epic)
+                # media.photo_of_english_epic.save(f"epic_en_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
                 # Generate PDF for English EPIC
                 english_epic.seek(0)  # Reset file pointer
                 pdf_buffer = generate_pdf_from_image(english_epic)
-                media.english_epic_pdf.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                media.photo_of_english_epic.save(f"epic_en_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Regional EPIC
             if "photo_of_regional_language_epic" in request.FILES:
                 regional_epic = request.FILES["photo_of_regional_language_epic"]
                 # Create both optimized image and PDF version
-                optimized = optimize_image(regional_epic)
-                media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                optimized = (regional_epic)
+                # media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
                 # Generate PDF for Regional EPIC
                 regional_epic.seek(0)  # Reset file pointer
                 pdf_buffer = generate_pdf_from_image(regional_epic)
-                media.regional_epic_pdf.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Land Ownership document
             if "land_ownership" in request.FILES:
                 land_doc = request.FILES["land_ownership"]
                 # Create both optimized image and PDF version
-                optimized = optimize_image(land_doc)
-                media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+                optimized = (land_doc)
+                # media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
                 
                 # Generate PDF for Land Ownership
                 land_doc.seek(0)  # Reset file pointer
                 pdf_buffer = generate_pdf_from_image(land_doc)
-                media.land_ownership_pdf.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
+                media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Tree picture
             if "picture_of_tree" in request.FILES:
-                optimized = optimize_image(request.FILES["picture_of_tree"])
+                optimized = (request.FILES["picture_of_tree"])
                 media.picture_of_tree.save(f"tree_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
 
             # Handle ID proof generation
