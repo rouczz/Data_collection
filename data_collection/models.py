@@ -94,10 +94,9 @@ class FarmerMedia(models.Model):
 
     # ID-related fields
     ID_TYPE_CHOICES = [
-        ("aadhaar", "Aadhaar Card"),
-        ("driving_license", "Driving License"),
+        ("aadhar", "Aadhar Card"),
+        ("driving_licence", "Driving License"),
         ("voter_id", "Voter ID"),
-        ("ration_card", "Ration Card"),
         ("pan_card", "PAN Card"),
     ]
     id_type = models.CharField(
@@ -120,11 +119,20 @@ class FarmerMedia(models.Model):
         help_text="PDF file containing both front and back sides of the ID card."
     )
 
+    id_expiry_date = models.DateField(null=True, blank=True)
+
     # Other media fields
     land_ownership = models.FileField(upload_to=farmer_media_path,null=True, blank=True)
-    picture_of_tree = models.ImageField(upload_to=farmer_media_path,null=True, blank=True)
+    # picture_of_tree = models.ImageField(upload_to=farmer_media_path,null=True, blank=True)
+    centre_top = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    centre_bottom = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    centre_left = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    centre_right = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+
     digital_signature = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
+    vaarha_document_id = models.IntegerField(null=True, blank=True)
     vaarha_id = models.IntegerField(null=True, blank=True)
+    vaarha_doc_metadata = models.JSONField(null=True, blank=True)
 
     # Timestamp
     uploaded_at = models.DateTimeField(auto_now_add=True)

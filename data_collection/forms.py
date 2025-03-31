@@ -74,7 +74,10 @@ class FarmerMediaForm(forms.ModelForm):
             'id_number',
             'id_proof',
             'land_ownership',
-            'picture_of_tree',
+            'centre_top',
+            'centre_bottom',
+            'centre_left',
+            'centre_right',
             'digital_signature'
         ]
         widgets = {
@@ -85,6 +88,9 @@ class FarmerMediaForm(forms.ModelForm):
             'id_number': forms.TextInput(attrs={"class": "form-control", "placeholder": "Enter ID Number"}),
             'id_proof': forms.ClearableFileInput(attrs={"accept": "application/pdf"}),
             'land_ownership': forms.ClearableFileInput(attrs={"accept": "application/pdf,.doc,.docx"}),
-            'picture_of_tree': forms.ClearableFileInput(attrs={"accept": "image/*", "capture": "environment"}),
+            'centre_top': forms.ClearableFileInput(attrs={"accept": "image/*", "capture": "environment"}),
+            'centre_bottom': forms.ClearableFileInput(attrs={"accept": "image/*", "capture": "environment"}),
+            'centre_left': forms.ClearableFileInput(attrs={"accept": "image/*", "capture": "environment"}),
+            'centre_right': forms.ClearableFileInput(attrs={"accept": "image/*", "capture": "environment"}),
             'digital_signature': forms.HiddenInput(),  # Hidden input for base64 signature
         }

@@ -32,10 +32,9 @@
             <label class="form-label">ID Card Type</label>
             <select id="idType" name="id_type" class="form-control">
                 <option value="">-- Select ID Type --</option>
-                <option value="aadhaar">Aadhaar Card</option>
+                <option value="aadhaar">Aadhar Card</option>
                 <option value="driving_license">Driving License</option>
                 <option value="voter_id">Voter ID</option>
-                <option value="ration_card">Ration Card</option>
                 <option value="pan_card">PAN Card</option>
             </select>
         </div>
@@ -46,6 +45,10 @@
             <input type="text" id="idNumber" name="id_number" class="form-control" placeholder="Enter ID Number">
         </div>
 
+        <div class="mb-3" id="expiryDateField" style="display: none;">
+            <label class="form-label">Expiry Date</label>
+            <input type="date" id="idExpiryDate" name="id_expiry_date" class="form-control">
+        </div>
         <!-- ID Proof -->
         <div class="mb-3">
             <label class="form-label">ID Card Front (Capture or Upload)</label>
@@ -64,10 +67,39 @@
             <input type="file" id="landOwnership" name="land_ownership" accept="image/*"   class="form-control">
         </div>
 
-        <!-- Picture of Tree -->
+        <!-- Tree Pictures -->
         <div class="mb-3">
-            <label class="form-label">Picture of Tree (Capture or Upload)</label>
-            <input type="file" id="pictureOfTree" name="picture_of_tree" accept="image/*"  class="form-control">
+            <h4 class="text-center">Tree Pictures</h4>
+            <p>Click on the sample images below to see examples.</p>
+            <div class="row">
+                <!-- Centre Top -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Centre Top</label>
+                    <input type="file" id="centreTop" name="centre_top" accept="image/*" class="form-control">
+                    <img src="{% static 'images/sample_centre_top.jpg' %}" alt="Sample Centre Top" class="img-thumbnail mt-2 sample-image" style="cursor: pointer;" onclick="viewImage(this)">
+                </div>
+
+                <!-- Centre Bottom -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Centre Bottom</label>
+                    <input type="file" id="centreBottom" name="centre_bottom" accept="image/*" class="form-control">
+                    <img src="{% static 'images/sample_centre_bottom.jpg' %}" alt="Sample Centre Bottom" class="img-thumbnail mt-2 sample-image" style="cursor: pointer;" onclick="viewImage(this)">
+                </div>
+
+                <!-- Centre Left -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Centre Left</label>
+                    <input type="file" id="centreLeft" name="centre_left" accept="image/*" class="form-control">
+                    <img src="{% static 'images/sample_centre_left.jpg' %}" alt="Sample Centre Left" class="img-thumbnail mt-2 sample-image" style="cursor: pointer;" onclick="viewImage(this)">
+                </div>
+
+                <!-- Centre Right -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Centre Right</label>
+                    <input type="file" id="centreRight" name="centre_right" accept="image/*" class="form-control">
+                    <img src="{% static 'images/sample_centre_right.jpg' %}" alt="Sample Centre Right" class="img-thumbnail mt-2 sample-image" style="cursor: pointer;" onclick="viewImage(this)">
+                </div>
+            </div>
         </div>
 
         <!-- Digital Signature -->
@@ -240,6 +272,21 @@
             document.getElementById("signatureData").value = "";
             drawWatermark();
             instructions.innerHTML = '<small class="text-muted">Sign with your finger or stylus</small>';
+        });
+
+         // ============== REST OF YOUR SCRIPT FOLLOWS ==============
+        const idTypeSelect = document.getElementById("idType");
+        const expiryDateField = document.getElementById("expiryDateField");
+
+        // Add event listener to the ID type dropdown
+        idTypeSelect.addEventListener("change", function () {
+            if (this.value === "driving_license") {
+                // Show expiry date field for Driving License
+                expiryDateField.style.display = "block";
+            } else {
+                // Hide expiry date field for other ID types
+                expiryDateField.style.display = "none";
+            }
         });
         
         // ============== REST OF YOUR SCRIPT FOLLOWS ==============

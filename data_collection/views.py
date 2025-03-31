@@ -600,10 +600,18 @@ def upload_media(request, farmer_id):
                 pdf_buffer = generate_pdf_from_image(land_doc)
                 media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
-            # Handle Tree picture
-            if "picture_of_tree" in request.FILES:
-                optimized = (request.FILES["picture_of_tree"])
-                media.picture_of_tree.save(f"tree_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
+            # Handle Four Tree Pictures
+            for position in ["centre_top", "centre_bottom", "centre_left", "centre_right"]:
+                            if position in request.FILES:
+                                # Optimize the uploaded image
+                                optimized_image = (request.FILES[position])
+                                if optimized_image:
+                                    # Save the optimized image to the respective field
+                                    getattr(media, position).save(
+                                        f"{position}_{farmer.id}.jpg",
+                                        ContentFile(optimized_image.read()),
+                                        save=False
+                                    )
 
             # Handle ID proof generation
             front_image = request.FILES.get("id_proof_front")
@@ -616,13 +624,17 @@ def upload_media(request, farmer_id):
                 # Save the PDF to the media model
                 media.id_proof.save(f"id_proof_{farmer.id}.pdf", pdf_file, save=False)
 
-            # Handle ID type and ID number
             id_type = request.POST.get("id_type")
+            print("ID Type:",id_type)
             id_number = request.POST.get("id_number")
+            id_expiry_date = request.POST.get("id_expiry_date")  # Optional field
+
             if id_type:
                 media.id_type = id_type
             if id_number:
                 media.id_number = id_number
+            if id_expiry_date and id_type == "driving_license":  # Only process expiry date for Driving License
+                media.id_expiry_date = id_expiry_date
 
             # Handle digital signature (base64 string from canvas)
             signature_data = request.POST.get("digital_signature")

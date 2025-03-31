@@ -314,12 +314,18 @@ def push_all_data_to_vaarha(request):
 
         for farmer_data in farmers:
             farmer = Farmer.objects.get(id=farmer_data["id"])
+            media = FarmerMedia.objects.filter(farmer=farmer).first()
 
             # Push Farmer (if not synced)
             if not farmer.vaarha_id:
                 response = push_farmers_to_vaarha(farmer)
                 if response.status_code != 201:
                     errors.append({"farmer_id": farmer.id, "error": response.json()})
+
+            if not media.vaarha_document_id:
+                response = push_documents_to_vaarha(farmer)
+                if response.status_code != 201:
+                    errors.append({"farmer_id": farmer.id, "document_error": response.json()})
 
             # Push Farms
             farms = Farm.objects.filter(farmer=farmer)
@@ -351,6 +357,41 @@ def push_all_data_to_vaarha(request):
         return JsonResponse({"success": True, "message": "All data pushed successfully!"})
 
 
+def push_documents_to_vaarha(farmer):
+    media = FarmerMedia.objects.filter(farmer=farmer).first()
+
+    if not media:
+        return JsonResponse({"error": "No document available for farmer"}, status=400)
+
+    if media.vaarha_document_id:
+        return JsonResponse({"message": "Document already synced"}, status=200)
+
+    document_payload = {
+        "doc_type": "IDENTITY_CARD",
+        "farmer_id": media.farmer.vaarha_id,
+        "doc_reference": media.id_type,
+        "document_number": media.id_number,
+        "document_details": {
+            "type": dict(FarmerMedia.ID_TYPE_CHOICES).get(media.id_type, ""),
+            "expiry": media.id_expiry_date.strftime("%Y-%m-%d") if media.id_expiry_date else None
+        },
+    }
+    print("doc_payload:",document_payload)
+    response = requests.post(f"{VAARHA_API_BASE_URL}/farmer-document/create/", json=document_payload, headers=HEADERS)
+    print("Response", response.json())
+    if response.status_code == 201:
+        response_data = response.json()
+        media.vaarha_document_id = response_data.get("id")
+        # Store metadata in vaarha_doc_metadata field
+        media.vaarha_doc_metadata = {
+            "is_verified": response_data.get("is_verified", False),
+            "validated_datetime": response_data.get("validated_datetime"),
+            "created_datetime": response_data.get("created_datetime"),
+        }
+        media.save()
+        print("Document data synced successfully:", response_data)
+
+    return response
 
 # ✅ 1️⃣ Push Farmer to Vaarha
 def push_farmers_to_vaarha(farmer):
