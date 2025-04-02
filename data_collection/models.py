@@ -30,14 +30,14 @@ class Farm(models.Model):
     boundary = models.PolygonField()
     metadata = models.JSONField(default=dict, blank=True, null=True)
     vaarha_id = models.IntegerField(null=True, blank=True)
-
+    land_ownership = models.FileField(upload_to='land_doc/',null=True, blank=True)
+    landlord_declaration = models.FileField(upload_to='farm_landlord_declarations/', null=True, blank=True)
     def __str__(self):
         return self.farm_name
 
 class Plantation(models.Model):
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name='plantations')
     kyari_name = models.CharField(max_length=100)
-    number_of_saplings = models.IntegerField()
     area_in_acres = models.FloatField()
     plantation_model = models.CharField(max_length=50, default="BLOCK")
     year = models.IntegerField()
@@ -61,6 +61,11 @@ class Specie(models.Model):
     spacing_cl = models.FloatField()
     spacing_ct = models.FloatField()
     spacing_cb = models.FloatField()
+    centre_top = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
+    centre_bottom = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
+    centre_left = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
+    centre_right = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
+
     specie_attributes = models.JSONField(default=dict, blank=True, null=True)
     metadata = models.JSONField(default=dict, blank=True, null=True)
     plantation_date = models.DateField()
@@ -122,12 +127,8 @@ class FarmerMedia(models.Model):
     id_expiry_date = models.DateField(null=True, blank=True)
 
     # Other media fields
-    land_ownership = models.FileField(upload_to=farmer_media_path,null=True, blank=True)
+
     # picture_of_tree = models.ImageField(upload_to=farmer_media_path,null=True, blank=True)
-    centre_top = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
-    centre_bottom = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
-    centre_left = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
-    centre_right = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
 
     digital_signature = models.ImageField(upload_to=farmer_media_path, null=True, blank=True)
     vaarha_document_id = models.IntegerField(null=True, blank=True)

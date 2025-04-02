@@ -35,23 +35,79 @@ def create_farmer(request):
     return render(request, 'data_collection/templates/create_farmer.html', {'form': form})
 
 
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.contrib.gis.geos import GEOSGeometry
+from .models import Farmer, Farm
+from .forms import FarmForm
+
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from PIL import Image
+import io
+
+def generate_pdf_from_image(image_file):
+    """ Convert an image file to a PDF and return the PDF file. """
+    image = Image.open(image_file)
+    pdf_bytes = io.BytesIO()
+    image.save(pdf_bytes, format="PDF")
+    pdf_bytes.seek(0)
+    return pdf_bytes
 
 def add_farm(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
 
     if request.method == "POST":
-        form = FarmForm(request.POST)
-        boundary_geojson = request.POST.get('boundary')
+        form = FarmForm(request.POST, request.FILES)
+        boundary_geojson = request.POST.get("boundary", None)
+
         if form.is_valid():
             farm = form.save(commit=False)
-            farm.farmer = farmer  # ✅ Link farm to the farmer
-            farm.boundary = GEOSGeometry(boundary_geojson) 
+            farm.farmer = farmer
+            
+            # ✅ Handle boundary conversion
+            if boundary_geojson:
+                try:
+                    farm.boundary = GEOSGeometry(boundary_geojson)
+                except Exception as e:
+                    return JsonResponse({"success": False, "errors": {"boundary": str(e)}})
+
+            # ✅ Process land ownership document (Convert image to PDF)
+            land_ownership_image = request.FILES.get("land_ownership")
+            if land_ownership_image:
+                pdf_file = generate_pdf_from_image(land_ownership_image)  # Convert to PDF
+                
+                # ✅ Save the PDF file to Django's default storage
+                pdf_path = f"land_documents/{farmer_id}_land_ownership.pdf"
+                default_storage.save(pdf_path, ContentFile(pdf_file.read()))
+                
+                # ✅ Store the file path in the model
+                farm.land_ownership = pdf_path  
+
+            # ✅ Process landlord declaration (Convert image to PDF)
+            landlord_declaration_image = request.FILES.get("landlord_declaration")
+            if landlord_declaration_image:
+                pdf_file = generate_pdf_from_image(landlord_declaration_image)  # Convert to PDF
+                
+                # ✅ Save the PDF file to Django's default storage
+                pdf_path = f"farm_landlord_declarations/{farmer_id}_landlord_declaration.pdf"
+                default_storage.save(pdf_path, ContentFile(pdf_file.read()))
+                
+                # ✅ Store the file path in the model
+                farm.landlord_declaration = pdf_path  
+
             farm.save()
-            return JsonResponse({"success": True, "farm_id": farm.id})  # ✅ Send farmer_id
+            return JsonResponse({"success": True, "farm_id": farm.id})
         else:
             return JsonResponse({"success": False, "errors": form.errors})
 
-    return render(request, "data_collection/templates/add_farm.html", {"form": FarmForm(), "farmer": farmer,  "farmer_id": farmer.id})
+    return render(
+        request, 
+        "data_collection/templates/add_farm.html", 
+        {"form": FarmForm(), "farmer": farmer, "farmer_id": farmer.id}
+    )
+
+
 
 
 # def add_plantation(request, farm_id):
@@ -138,7 +194,7 @@ def add_specie(request, farmer_id):
     ).filter(species_count=0)  # Only include plantations without species
 
     if request.method == "POST":
-        form = SpecieForm(request.POST)
+        form = SpecieForm(request.POST, request.FILES)  # Accept files
         plantation_id = request.POST.get("plantation_id")
 
         if form.is_valid() and plantation_id:
@@ -154,6 +210,7 @@ def add_specie(request, farmer_id):
             if not plantation_id:
                 errors['plantation_id'] = ['Please select a plantation']
             return JsonResponse({"success": False, "errors": errors}, status=400)
+
 
     else:
         form = SpecieForm()
@@ -589,29 +646,8 @@ def upload_media(request, farmer_id):
                 media.photo_of_regional_language_epic.save(f"epic_reg_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
                 
             # Handle Land Ownership document
-            if "land_ownership" in request.FILES:
-                land_doc = request.FILES["land_ownership"]
-                # Create both optimized image and PDF version
-                optimized = (land_doc)
-                # media.land_ownership.save(f"land_{farmer.id}.jpg", ContentFile(optimized.read()), save=False)
-                
-                # Generate PDF for Land Ownership
-                land_doc.seek(0)  # Reset file pointer
-                pdf_buffer = generate_pdf_from_image(land_doc)
-                media.land_ownership.save(f"land_{farmer.id}.pdf", ContentFile(pdf_buffer.read()), save=False)
-                
-            # Handle Four Tree Pictures
-            for position in ["centre_top", "centre_bottom", "centre_left", "centre_right"]:
-                            if position in request.FILES:
-                                # Optimize the uploaded image
-                                optimized_image = (request.FILES[position])
-                                if optimized_image:
-                                    # Save the optimized image to the respective field
-                                    getattr(media, position).save(
-                                        f"{position}_{farmer.id}.jpg",
-                                        ContentFile(optimized_image.read()),
-                                        save=False
-                                    )
+            
+
 
             # Handle ID proof generation
             front_image = request.FILES.get("id_proof_front")

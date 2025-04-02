@@ -261,14 +261,14 @@ def get_sync_status(request):
         farms = Farm.objects.filter(farmer=farmer)
         plantations = Plantation.objects.filter(farm__in=farms)
         species = Specie.objects.filter(plantation__in=plantations)
-        # media = FarmerMedia.objects.filter(ref_id=farmer.id, ref_type="Farmer")
+        media = FarmerMedia.objects.filter(farmer=farmer)
 
         is_synced = all([
             farmer.vaarha_id,
             all(farm.vaarha_id for farm in farms),
             all(plantation.vaarha_id for plantation in plantations),
             all(specie.vaarha_id for specie in species),
-            # all(media.vaarha_id for media in media),
+            all(media.vaarha_id for media in media),
         ])
 
         farmer_data.append({
@@ -322,10 +322,15 @@ def push_all_data_to_vaarha(request):
                 if response.status_code != 201:
                     errors.append({"farmer_id": farmer.id, "error": response.json()})
 
-            if not media.vaarha_document_id:
-                response = push_documents_to_vaarha(farmer)
-                if response.status_code != 201:
-                    errors.append({"farmer_id": farmer.id, "document_error": response.json()})
+            # if not media.vaarha_document_id:
+            #     response = push_documents_to_vaarha(farmer)
+            #     if response.status_code != 201:
+            #         errors.append({"farmer_id": farmer.id, "document_error": response.json()})
+
+            # if not media.vaarha_id:
+            #     response = push_media_to_vaarha(farmer)
+            #     # if response.status_code != 201:
+            #     #     errors.append({"farmer_id": farmer.id, "media_error": response.json()})
 
             # Push Farms
             farms = Farm.objects.filter(farmer=farmer)
@@ -356,7 +361,107 @@ def push_all_data_to_vaarha(request):
             return JsonResponse({"success": False, "errors": errors}, status=400)
         return JsonResponse({"success": True, "message": "All data pushed successfully!"})
 
-
+VAARHA_MEDIA_UPLOAD_URL = f"{VAARHA_API_BASE_URL}/api/user/v1/farmer/media/upload/"
+# Mapping model fields to Varaha API ref_type & sub_ref_name
+MEDIA_MAPPING = {
+    "picture": ("Farmer", "ProfilePicture"),
+    "photo_of_english_epic": ("Farmer", "RegenFPIC"),
+    "photo_of_regional_language_epic": ("Farmer", "RegenFPICLocal"),
+    "id_proof": ("Farmer", "IdentityImage"),
+    "land_ownership": ("Farm", "LandRecord"),
+    "digital_signature": ("Farmer", "ConsentSignature"),
+    "centre_top": ("AgroFarmSpecie", "CentreTop"),
+    "centre_bottom": ("AgroFarmSpecie", "CentreBottom"),
+    "centre_left": ("AgroFarmSpecie", "CentreLeft"),
+    "centre_right": ("AgroFarmSpecie", "CentreRight"),
+}
+def push_media_to_vaarha(farmer):
+    media_objects = FarmerMedia.objects.filter(farmer=farmer)
+    print("mediaobjects:", media_objects)
+    results = []
+    
+    for media in media_objects:
+        for field_name, (ref_type, sub_ref_name) in MEDIA_MAPPING.items():
+            file_field = getattr(media, field_name, None)
+            if file_field and file_field.name:  # Check if file exists
+                try:
+                    # Get file size
+                    content_length = file_field.size
+                    
+                    payload = {
+                        "ref_type": ref_type,
+                        "ref_sub_type": sub_ref_name,
+                        "ref_id": farmer.vaarha_id,
+                        "farmer_id": farmer.vaarha_id,
+                        "content_length": content_length,
+                        # "metadata": {"farmer_name": farmer.first_name}
+                    }
+                    
+                    # Send request to get signed S3 URL from Varaha
+                    response = requests.post(VAARHA_MEDIA_UPLOAD_URL, json=payload, headers=HEADERS)
+                    
+                    if response.status_code in [200, 201]:
+                        upload_data = response.json().get("media_details", {}).get("s3_data", {})
+                        
+                        # Read the file content
+                        file_field.open('rb')  # Make sure file is open
+                        file_content = file_field.read()
+                        file_field.close()
+                        
+                        # Get filename from the path
+                        filename = file_field.name.split('/')[-1]
+                        
+                        # Perform upload to Varaha's S3 using the signed URL
+                        files = {
+                            "file": (filename, file_content, upload_data["fields"].get("Content-Type", "application/octet-stream"))
+                        }
+                        
+                        # Add all required fields from the presigned URL
+                        s3_response = requests.post(
+                            upload_data["url"], 
+                            data=upload_data["fields"], 
+                            files=files
+                        )
+                        print("s3_response :",s3_response)
+                        # Check for successful upload (S3 can return different success codes)
+                        if s3_response.status_code in [200, 201, 204]:
+                            # Store response data in vaarha_doc_metadata field
+                            media.vaarha_doc_metadata = {
+                                "varaha_media_id": response.json().get("id"),
+                                "ref_type": ref_type,
+                                "sub_ref_name": sub_ref_name,
+                                "file_name": file_field.name,
+                            }
+                            media.save()
+                            results.append({
+                                "status": "success",
+                                "field": field_name,
+                                "farmer_id": farmer.id,
+                                "media_id": response.json().get("id")
+                            })
+                        else:
+                            results.append({
+                                "status": "error",
+                                "field": field_name,
+                                "farmer_id": farmer.id,
+                                "message": f"Failed to upload to S3: {s3_response.status_code} - {s3_response.text}"
+                            })
+                    else:
+                        results.append({
+                            "status": "error",
+                            "field": field_name,
+                            "farmer_id": farmer.id,
+                            "message": f"Failed to get S3 URL: {response.status_code} - {response.text}"
+                        })
+                except Exception as e:
+                    results.append({
+                        "status": "error",
+                        "field": field_name,
+                        "farmer_id": farmer.id,
+                        "message": f"Exception: {str(e)}"
+                    })
+    
+    return {"message": "Media upload process completed", "results": results}
 def push_documents_to_vaarha(farmer):
     media = FarmerMedia.objects.filter(farmer=farmer).first()
 
@@ -435,15 +540,106 @@ def push_farms_to_vaarha(farm):
         },
         "metadata": {}
     }
+    if farm.owner_mobile_number:
+        farm_payload["owner_mobile_number"] = farm.owner_mobile_number
+
+    if farm.owner_full_name:
+        farm_payload["owner_full_name"] = farm.owner_full_name
+
     print(farm_payload)
     response = requests.post(f"{VAARHA_API_BASE_URL}/plantation/agfarm/create/", json=farm_payload, headers=HEADERS)
     if response.status_code == 201:
+        
         farm_data = response.json()
         print("Farm data:",farm_data)
         farm.vaarha_id = farm_data["id"]
         farm.save()
 
+        # ✅ Upload Landlord Declaration if it exists
+        if farm.landlord_declaration:
+            print("farm.landlord_declaration",farm.landlord_declaration)
+            upload_landlord_declaration(farm)
+
+
     return response
+
+import requests
+import boto3
+
+
+# AWS S3 Setup
+S3_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+s3_client = boto3.client("s3")
+
+def get_s3_file_details(file_url):
+    """Fetch content length & file object from S3."""
+    try:
+        print("Original File URL:", file_url)  # ✅ Debugging step
+
+        # Extract only the key from the URL
+        file_key = file_url.split("farm_landlord_declarations/")[-1]
+        file_key = "farm_landlord_declarations/" + file_key  # Ensure full path
+        print("Extracted File Key:", file_key)  # ✅ Debugging step
+
+        # Fetch file metadata
+        response = s3_client.head_object(Bucket=S3_BUCKET_NAME, Key=file_key)
+        content_length = response["ContentLength"]
+        return file_key, content_length
+
+    except Exception as e:
+        print("Error fetching S3 file details:", e)
+        return None, None
+
+
+
+def upload_landlord_declaration(farm):
+    """Upload the landlord declaration form to Varaha"""
+    if not farm.landlord_declaration:
+        return None  # No file to upload
+
+    # Get file details from S3
+    file_url = farm.landlord_declaration.url
+    print("Landlord Declaration URL:", farm.landlord_declaration.url)
+
+    file_key, content_length = get_s3_file_details(file_url)
+
+    if not file_key or not content_length:
+        return None  # Failed to fetch S3 file details
+
+    # Step 1: Get upload URL from Varaha
+    payload = {
+        "ref_type": "Farm",
+        "ref_sub_type": "LandLordDeclaration",
+        "ref_id": farm.farmer.vaarha_id,  # The farmer ID in Varaha
+        "farmer_id": farm.farmer.vaarha_id,  # The farmer's ID in Varaha
+        "content_length": content_length
+    }
+
+    response = requests.post(f"{VAARHA_API_BASE_URL}/media/request-upload/", json=payload, headers=HEADERS)
+    print("Response:", response.json())
+    if response.status_code != 201:
+        print("Failed to get Varaha upload URL:", response.json())
+        return None
+
+    upload_data = response.json()
+
+    upload_url = upload_data["media_details"]["s3_data"]["url"]
+    data_fields=upload_data["media_details"]["s3_data"]["fields"]
+    if not upload_url:
+        print("No upload URL returned from Varaha.")
+        return None
+
+    # Step 2: Upload the file to Varaha
+    s3_file = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=file_key)["Body"].read()
+    
+    upload_response = requests.post(upload_url, data=s3_file, fields=data_fields)
+
+    if upload_response.status_code not in [200, 201, 204]:
+        print("File upload failed:", upload_response.text)
+        return None
+
+    print(f"Successfully uploaded landlord declaration for farm {farm.id}")
+    return True
 
 
 

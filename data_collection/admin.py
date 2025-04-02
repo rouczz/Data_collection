@@ -17,7 +17,7 @@ class FarmerAdmin(admin.ModelAdmin):
 @admin.register(Farm)
 class FarmAdmin(admin.ModelAdmin):
     list_display = (
-        'id','farmer', 'farm_name', 'area_in_acres', 'ownership', 'owner_mobile_number', 
+        'id','farmer', 'farm_name', 'area_in_acres', 'ownership', 'owner_mobile_number','land_ownership', 'landlord_declaration', 
         'owner_full_name', 'boundary_method', 'boundary', 'metadata'
     )
     list_filter = ('ownership', 'boundary_method')
@@ -27,7 +27,7 @@ class FarmAdmin(admin.ModelAdmin):
 @admin.register(Plantation)
 class PlantationAdmin(admin.ModelAdmin):
     list_display = (
-        'id','farm', 'kyari_name', 'number_of_saplings', 'area_in_acres', 
+        'id','farm', 'kyari_name', 'area_in_acres', 
         'year',  'is_feasible', 'boundary', 'metadata', 'kyari_attributes'
     )
     list_filter = ( 'is_feasible', 'year')

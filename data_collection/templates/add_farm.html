@@ -21,7 +21,7 @@
 </div>
 
 <!-- Farm Form -->
-<form id="farmForm" method="post">
+{% comment %} <form id="farmForm" method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <input type="hidden" name="boundary" id="boundary">
@@ -30,7 +30,60 @@
     <div class="mt-3">
         <button id="addPlantationBoundaryBtn" class="btn btn-success">🌱 Add Plantation Boundary</button>
     </div>
+</form> {% endcomment %}
+<form id="farmForm" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="mb-3">
+        <label for="id_farm_name">Farm Name:</label>
+        {{ form.farm_name }}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_area_in_acres">Area (in acres):</label>
+        {{ form.area_in_acres }}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_ownership">Ownership:</label>
+        {{ form.ownership }}
+    </div>
+
+    <!-- Leased Fields (Initially Hidden) -->
+    <div id="leasedFields" style="display: none;">
+        <div class="mb-3">
+            <label for="id_owner_mobile_number">Owner Mobile Number:</label>
+            {{ form.owner_mobile_number }}
+        </div>
+
+        <div class="mb-3">
+            <label for="id_owner_full_name">Owner Full Name:</label>
+            {{ form.owner_full_name }}
+        </div>
+
+        <div class="mb-3">
+            <label for="id_landlord_declaration">Landlord Declaration </label>
+            {{ form.landlord_declaration }}
+        </div>
+    </div>
+            <!-- Land Ownership Document -->
+    <div class="mb-3">
+        <label class="form-label">Land Ownership Document </label>
+        <input type="file" id="landOwnership" name="land_ownership" accept="image/*"   class="form-control">
+    </div>
+    <div class="mb-3">
+        <label for="id_boundary_method">Boundary Method:</label>
+        {{ form.boundary_method }}
+    </div>
+
+    <input type="hidden" name="boundary" id="boundary">
+
+    <button type="submit" class="btn btn-primary">Submit Farm</button>
+    <div class="mt-3">
+        <button id="addPlantationBoundaryBtn" class="btn btn-success">🌱 Add Plantation Boundary</button>
+    </div>
 </form>
+
 
 <!-- Map Container -->
 <h3>Draw the Farm Boundary</h3>
@@ -383,8 +436,29 @@
         map.on(L.Draw.Event.DRAWSTART, function () {
             document.getElementById('intersection-warning').style.display = 'none';
         });
+
+        const ownershipField = document.querySelector("#id_ownership");
+        const leasedFieldsDiv = document.querySelector("#leasedFields");
+
+        if (!ownershipField || !leasedFieldsDiv) {
+            console.error("Ownership dropdown or leased fields div not found!");
+            return;
+        }
+
+        function toggleLeasedFields() {
+            if (ownershipField.value === "LEASED") {
+                leasedFieldsDiv.style.display = "block";  // Show leased fields
+            } else {
+                leasedFieldsDiv.style.display = "none";  // Hide leased fields
+            }
+        }
+
+        // Initialize on page load
+        toggleLeasedFields();
+
+    // Listen for changes in ownership dropdown
+        ownershipField.addEventListener("change", toggleLeasedFields);
     });
-    
     // AJAX Form Submission
     document.getElementById("farmForm").addEventListener("submit", function(event) {
         event.preventDefault(); // Prevent default form submission
