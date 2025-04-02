@@ -54,6 +54,13 @@ def generate_pdf_from_image(image_file):
     pdf_bytes.seek(0)
     return pdf_bytes
 
+import uuid
+import time
+def generate_unique_filename(base_name):
+    timestamp = int(time.time())  # Get current timestamp
+    unique_id = uuid.uuid4().hex[:6]  # Generate a short unique ID
+    return f"{base_name}_{timestamp}_{unique_id}.pdf"
+
 def add_farm(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
 
@@ -77,8 +84,9 @@ def add_farm(request, farmer_id):
             if land_ownership_image:
                 pdf_file = generate_pdf_from_image(land_ownership_image)  # Convert to PDF
                 
-                # ✅ Save the PDF file to Django's default storage
-                pdf_path = f"land_documents/{farmer_id}_land_ownership.pdf"
+                    # ✅ Generate a unique file path
+                unique_filename = generate_unique_filename(f"{farmer_id}_land_ownership")
+                pdf_path = f"land_documents/{unique_filename}"
                 default_storage.save(pdf_path, ContentFile(pdf_file.read()))
                 
                 # ✅ Store the file path in the model
@@ -90,7 +98,8 @@ def add_farm(request, farmer_id):
                 pdf_file = generate_pdf_from_image(landlord_declaration_image)  # Convert to PDF
                 
                 # ✅ Save the PDF file to Django's default storage
-                pdf_path = f"farm_landlord_declarations/{farmer_id}_landlord_declaration.pdf"
+                unique_filename = generate_unique_filename(f"{farmer_id}_landlord_declaration")
+                pdf_path = f"farm_landlord_declarations/{unique_filename}"
                 default_storage.save(pdf_path, ContentFile(pdf_file.read()))
                 
                 # ✅ Store the file path in the model
@@ -669,7 +678,7 @@ def upload_media(request, farmer_id):
                 media.id_type = id_type
             if id_number:
                 media.id_number = id_number
-            if id_expiry_date and id_type == "driving_license":  # Only process expiry date for Driving License
+            if id_expiry_date and id_type == "driving_licence":  # Only process expiry date for Driving License
                 media.id_expiry_date = id_expiry_date
 
             # Handle digital signature (base64 string from canvas)

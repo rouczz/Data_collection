@@ -30,7 +30,7 @@ class Farm(models.Model):
     boundary = models.PolygonField()
     metadata = models.JSONField(default=dict, blank=True, null=True)
     vaarha_id = models.IntegerField(null=True, blank=True)
-    land_ownership = models.FileField(upload_to='land_doc/',null=True, blank=True)
+    land_ownership = models.FileField(upload_to='land_documents/',null=True, blank=True)
     landlord_declaration = models.FileField(upload_to='farm_landlord_declarations/', null=True, blank=True)
     def __str__(self):
         return self.farm_name
