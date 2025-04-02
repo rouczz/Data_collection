@@ -176,58 +176,81 @@ document.addEventListener("DOMContentLoaded", function() {
 
      
         
-        var marker = null;  // Declare globally
+    // Initialize marker as global variable
+    window.marker = null;
+    
+    // Debug message
+    console.log("Map initialized");
+    
+    // Get geolocation with proper error handling
+    if (navigator.geolocation) {
+        console.log("Requesting geolocation...");
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                console.log("Geolocation success:", position.coords.latitude, position.coords.longitude);
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    var lat = position.coords.latitude;
-                    var lng = position.coords.longitude;
-    
-                    map.setView([lat, lng], 14);
-    
-                    // Remove old marker before adding new one
-                    if (marker) {
-                        map.removeLayer(marker);
-                    }
-    
-                    marker = L.marker([lat, lng]).addTo(map)
-                        .bindPopup("Your Current Location").openPopup();
-    
-                    document.getElementById("latitude").value = lat;
-                    document.getElementById("longitude").value = lng;
-                },
-                function(error) {
-                    console.warn("Geolocation error: " + error.message);
-                    if (error.code === error.PERMISSION_DENIED) {
-                        alert("Location access denied. Please enable location services.");
-                    }
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        } else {
-            alert("Geolocation is not supported by your browser.");
-        }
-    
-        // Allow User to Select a New Location on Click
-        map.on('click', function(e) {
-            var lat = e.latlng.lat;
-            var lng = e.latlng.lng;
-    
-            document.getElementById("latitude").value = lat;
-            document.getElementById("longitude").value = lng;
-    
-            // Remove old marker before adding new one
-            if (marker) {
-                map.removeLayer(marker);
+                map.setView([lat, lng], 14);
+
+                // Remove old marker before adding new one
+                if (window.marker) {
+                    map.removeLayer(window.marker);
+                }
+
+                window.marker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup("Your Current Location").openPopup();
+
+                document.getElementById("latitude").value = lat;
+                document.getElementById("longitude").value = lng;
+            },
+            function(error) {
+                console.error("Geolocation error:", error.code, error.message);
+                // More specific error messages
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        alert("Location access denied. Please enable location services in your device settings.");
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert("Location information is unavailable. Try again or select manually.");
+                        break;
+                    case error.TIMEOUT:
+                        alert("Location request timed out. Try again or select manually.");
+                        break;
+                    default:
+                        alert("An unknown error occurred getting location. Try again or select manually.");
+                }
+            },
+            { 
+                enableHighAccuracy: true, 
+                timeout: 10000,  // Increase timeout to 10 seconds
+                maximumAge: 0 
             }
-    
-            marker = L.marker([lat, lng]).addTo(map)
-                .bindPopup("Selected Location").openPopup();
-        });
+        );
+    } else {
+        console.error("Geolocation not supported");
+        alert("Geolocation is not supported by your browser.");
+    }
+
+    // Allow User to Select a New Location on Click
+    map.on('click', function(e) {
+        console.log("Map clicked:", e.latlng.lat, e.latlng.lng);
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+
+        document.getElementById("latitude").value = lat;
+        document.getElementById("longitude").value = lng;
+
+        // Remove old marker before adding new one
+        if (window.marker) {
+            map.removeLayer(window.marker);
+        }
+
+        window.marker = L.marker([lat, lng]).addTo(map)
+            .bindPopup("Selected Location").openPopup();
     });
     
-document.addEventListener("DOMContentLoaded", function () {
+    // States, districts, blocks handling
     const stateSelect = document.getElementById("stateSelect");
     const districtSelect = document.getElementById("districtSelect");
     const blockSelect = document.getElementById("blockSelect");
