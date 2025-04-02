@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path,re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from .views import *
@@ -32,6 +32,10 @@ urlpatterns = [
     path("api/districts/<int:state_id>/",get_districts, name="get_districts"),
     path("api/blocks/<int:district_id>/",get_blocks, name="get_blocks"),
     path("api/plantation/species/all/", get_species, name="get_species"),
+
+
+
+    re_path(r'^tiles/(?P<layer>[a-z])/(?P<z>\d+)/(?P<x>\d+)/(?P<y>\d+)$', proxy_google_tiles, name='proxy_google_tiles'),
 ]
 # Compare this snippet from KMcollect/data_collection/views.py: 
 

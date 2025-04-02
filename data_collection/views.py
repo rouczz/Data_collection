@@ -708,3 +708,52 @@ def upload_media(request, farmer_id):
             }, status=400)
 
     return render(request, "data_collection/templates/farmer_media.html", {"farmer": farmer, "farmer_id": farmer.id})
+
+
+
+# views.py
+import os
+import requests
+from django.http import HttpResponse
+from django.conf import settings
+
+def proxy_google_tiles(request, layer, z, x, y):
+    """
+    Proxy Google Maps tile requests through Django backend
+    """
+    # Get API key from settings
+    api_key = os.getenv('GOOGLE_API_KEY')
+    
+    # Choose a random subdomain
+    import random
+    subdomain = random.choice(['mt0', 'mt1', 'mt2', 'mt3'])
+    
+    # Construct the URL
+    url = f"https://{subdomain}.google.com/vt/lyrs={layer}&x={x}&y={y}&z={z}&key={api_key}"
+    
+    try:
+        # Get the tile from Google
+        response = requests.get(url, stream=True)
+        
+        # Check if request was successful
+        if response.status_code == 200:
+            # Create Django response with same content type
+            django_response = HttpResponse(
+                content=response.content,
+                content_type=response.headers['Content-Type'],
+                status=response.status_code
+            )
+            
+            # Add caching headers
+            django_response['Cache-Control'] = 'public, max-age=86400'  # Cache for one day
+            
+            return django_response
+        else:
+            return HttpResponse(status=response.status_code)
+            
+    except Exception as e:
+        # Log the error
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Tile proxy error: {str(e)}")
+        return HttpResponse(status=500)

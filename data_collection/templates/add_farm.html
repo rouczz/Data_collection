@@ -157,20 +157,17 @@
             maxZoom: 22
         });
     
-        var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key={}', {
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        var satellite = L.tileLayer('/tiles/s/{z}/{x}/{y}', {
             attribution: '&copy; Google Satellite',
             maxZoom: 22
         });
-    
-        var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        
+        var terrain = L.tileLayer('/tiles/p/{z}/{x}/{y}', {
             attribution: '&copy; Google Terrain',
             maxZoom: 22
         });
-    
-        var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        
+        var hybrid = L.tileLayer('/tiles/y/{z}/{x}/{y}', {
             attribution: '&copy; Google Hybrid',
             maxZoom: 22
         });

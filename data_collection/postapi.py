@@ -261,14 +261,14 @@ def get_sync_status(request):
         farms = Farm.objects.filter(farmer=farmer)
         plantations = Plantation.objects.filter(farm__in=farms)
         species = Specie.objects.filter(plantation__in=plantations)
-        media = FarmerMedia.objects.filter(farmer=farmer)
+        # media = FarmerMedia.objects.filter(farmer=farmer)
 
         is_synced = all([
             farmer.vaarha_id,
             all(farm.vaarha_id for farm in farms),
             all(plantation.vaarha_id for plantation in plantations),
             all(specie.vaarha_id for specie in species),
-            all(media.vaarha_id for media in media),
+            # all(media.vaarha_id for media in media),
         ])
 
         farmer_data.append({

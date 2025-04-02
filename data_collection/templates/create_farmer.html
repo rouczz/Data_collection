@@ -115,20 +115,17 @@ document.addEventListener("DOMContentLoaded", function() {
             maxZoom: 22  // ✅ Allow max zoom
         });
     
-        var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=AIzaSyBEUREbaSwfa7DeaQHHWwVoeAKqjf_CM5g', {
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        var satellite = L.tileLayer('/tiles/s/{z}/{x}/{y}', {
             attribution: '&copy; Google Satellite',
-            maxZoom: 22  // ✅ Higher zoom for better details
+            maxZoom: 22
         });
-    
-        var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&key=AIzaSyBEUREbaSwfa7DeaQHHWwVoeAKqjf_CM5g', {
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        
+        var terrain = L.tileLayer('/tiles/p/{z}/{x}/{y}', {
             attribution: '&copy; Google Terrain',
             maxZoom: 22
         });
-    
-        var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&key=AIzaSyBEUREbaSwfa7DeaQHHWwVoeAKqjf_CM5g', {
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        
+        var hybrid = L.tileLayer('/tiles/y/{z}/{x}/{y}', {
             attribution: '&copy; Google Hybrid',
             maxZoom: 22
         });
@@ -179,28 +176,29 @@ document.addEventListener("DOMContentLoaded", function() {
 
      
         
-        // Immediately Ask for User's Location on Load
+        var marker = null;  // Declare globally
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 function(position) {
                     var lat = position.coords.latitude;
                     var lng = position.coords.longitude;
     
-                    // Center map to user's location
                     map.setView([lat, lng], 14);
     
-                    // Add marker at user's location
+                    // Remove old marker before adding new one
+                    if (marker) {
+                        map.removeLayer(marker);
+                    }
+    
                     marker = L.marker([lat, lng]).addTo(map)
                         .bindPopup("Your Current Location").openPopup();
     
-                    // Store location in form fields
                     document.getElementById("latitude").value = lat;
                     document.getElementById("longitude").value = lng;
                 },
                 function(error) {
                     console.warn("Geolocation error: " + error.message);
-    
-                    // Handle location denial
                     if (error.code === error.PERMISSION_DENIED) {
                         alert("Location access denied. Please enable location services.");
                     }
@@ -219,6 +217,7 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("latitude").value = lat;
             document.getElementById("longitude").value = lng;
     
+            // Remove old marker before adding new one
             if (marker) {
                 map.removeLayer(marker);
             }
@@ -226,7 +225,8 @@ document.addEventListener("DOMContentLoaded", function() {
             marker = L.marker([lat, lng]).addTo(map)
                 .bindPopup("Selected Location").openPopup();
         });
-    })
+    });
+    
 document.addEventListener("DOMContentLoaded", function () {
     const stateSelect = document.getElementById("stateSelect");
     const districtSelect = document.getElementById("districtSelect");
