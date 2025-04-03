@@ -11,27 +11,21 @@
             <form method="post" enctype="multipart/form-data" class="card p-4 shadow">  <!-- ✅ Add enctype -->
                 {% csrf_token %}            
                 <div class="mb-3">
-                    <label for="stateSelect" class="form-label">Select State</label>
-                    <select id="stateSelect" class="form-control" required>
-                        <option value="">-- Select State --</option>
-                    </select>
-                </div>
-                
-                <div class="mb-3">
                     <label for="districtSelect" class="form-label">Select District</label>
-                    <select id="districtSelect" class="form-control" disabled required>
-                        <option value="">-- Select District --</option>
+                    <select id="districtSelect" name="district" class="form-control">
+                        <option value="">Loading districts...</option>
                     </select>
                 </div>
                 
                 <div class="mb-3">
                     <label for="blockSelect" class="form-label">Select Block</label>
-                    <select id="blockSelect" name="block_id" class="form-control" disabled required>
+                    <select id="blockSelect" name="block" class="form-control" disabled>
                         <option value="">-- Select Block --</option>
                     </select>
                 </div>
+                
 
-                <div class="mb-3">
+                {% comment %} <div class="mb-3">
                     <label class="form-label">Village</label>
                     {{ form.village }}
                 </div>
@@ -44,6 +38,15 @@
                             {{ form.pincode.errors }}
                         </div>
                     {% endif %}
+                </div> {% endcomment %}
+                <div class="mb-3">
+                    <label class="form-label">Village</label>
+                    <input type="text" id="village" name="village" class="form-control" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Pincode</label>
+                    <input type="text" id="pincode" name="pincode" class="form-control" required>
                 </div>
 
                 <div class="mb-3">
@@ -223,145 +226,142 @@ document.addEventListener("DOMContentLoaded", function() {
    
     
 
-     
-        
-    // Initialize marker as global variable
-    window.marker = null;
     
-    // Debug message
+    
+    window.marker = null;
     console.log("Map initialized");
     
-    // Get geolocation with proper error handling
+    // Function to fetch village and pincode using Nominatim API
+    function fetchLocationDetails(lat, lng) {
+        const nominatimURL = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+    
+        fetch(nominatimURL)
+            .then(response => response.json())
+            .then(data => {
+                console.log("Nominatim API Response:", data);
+    
+                // Extract village and pincode from response
+                const village = data.address.village || data.address.town || data.address.hamlet || "";
+                const pincode = data.address.postcode || "";
+    
+                // Update the form fields
+                document.getElementById("village").value = village;
+                document.getElementById("pincode").value = pincode;
+            })
+            .catch(error => {
+                console.error("Error fetching location details:", error);
+                alert("Failed to get village and pincode. Please enter manually.");
+            });
+    }
+    
+    // Get user's current location
     if (navigator.geolocation) {
         console.log("Requesting geolocation...");
         navigator.geolocation.getCurrentPosition(
-            function(position) {
+            function (position) {
                 console.log("Geolocation success:", position.coords.latitude, position.coords.longitude);
                 var lat = position.coords.latitude;
                 var lng = position.coords.longitude;
-
+    
                 map.setView([lat, lng], 14);
-
+    
                 // Remove old marker before adding new one
                 if (window.marker) {
                     map.removeLayer(window.marker);
                 }
-
+    
                 window.marker = L.marker([lat, lng]).addTo(map)
                     .bindPopup("Your Current Location").openPopup();
-
+    
                 document.getElementById("latitude").value = lat;
                 document.getElementById("longitude").value = lng;
+    
+                // Fetch village & pincode using Nominatim API
+                fetchLocationDetails(lat, lng);
             },
-            function(error) {
+            function (error) {
                 console.error("Geolocation error:", error.code, error.message);
-                // More specific error messages
-                switch(error.code) {
+                switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        alert("Location access denied. Please enable location services in your device settings.");
+                        alert("Location access denied. Please enable location services.");
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        alert("Location information is unavailable. Try again or select manually.");
+                        alert("Location information is unavailable.");
                         break;
                     case error.TIMEOUT:
-                        alert("Location request timed out. Try again or select manually.");
+                        alert("Location request timed out.");
                         break;
                     default:
-                        alert("An unknown error occurred getting location. Try again or select manually.");
+                        alert("An unknown error occurred.");
                 }
             },
-            { 
-                enableHighAccuracy: true, 
-                timeout: 10000,  // Increase timeout to 10 seconds
-                maximumAge: 0 
+            {
+                enableHighAccuracy: true,
+                timeout: 10000, // 10 seconds timeout
+                maximumAge: 0
             }
         );
     } else {
         console.error("Geolocation not supported");
         alert("Geolocation is not supported by your browser.");
     }
-
-    // Allow User to Select a New Location on Click
-    map.on('click', function(e) {
+    
+    // Allow user to manually select a location by clicking on the map
+    map.on('click', function (e) {
         console.log("Map clicked:", e.latlng.lat, e.latlng.lng);
         var lat = e.latlng.lat;
         var lng = e.latlng.lng;
-
+    
         document.getElementById("latitude").value = lat;
         document.getElementById("longitude").value = lng;
-
+    
         // Remove old marker before adding new one
         if (window.marker) {
             map.removeLayer(window.marker);
         }
-
+    
         window.marker = L.marker([lat, lng]).addTo(map)
             .bindPopup("Selected Location").openPopup();
+    
+        // Fetch village & pincode based on selected location
+        fetchLocationDetails(lat, lng);
     });
+        
     
     // States, districts, blocks handling
-    const stateSelect = document.getElementById("stateSelect");
     const districtSelect = document.getElementById("districtSelect");
     const blockSelect = document.getElementById("blockSelect");
 
-    // Fetch and populate States
-    fetch("/api/states/")
+    // Fetch Maharashtra districts on page load
+    fetch(`/api/districts/9/`) // State ID for Maharashtra is 9
         .then(response => response.json())
-        .then(states => {
-            states.forEach(state => {
+        .then(districts => {
+            districtSelect.innerHTML = '<option value="">-- Select District --</option>';
+            districts.forEach(district => {
                 const option = document.createElement("option");
-                option.value = state.id;
-                option.textContent = state.display_name;
-                stateSelect.appendChild(option);
+                option.value = district.id;
+                option.textContent = district.display_name;
+                districtSelect.appendChild(option);
             });
+            districtSelect.disabled = false;
         })
         .catch(error => {
-            console.error("Error fetching states:", error);
-            alert("Failed to load states. Please try again later.");
+            console.error("Error fetching districts:", error);
+            alert("Failed to load districts. Please try again later.");
         });
 
-    // Handle State Selection to Load Districts
-    stateSelect.addEventListener("change", function () {
-        const stateId = this.value;
-
-        if (!stateId) {
-            districtSelect.innerHTML = '<option value="">-- Select District --</option>';
-            districtSelect.disabled = true;
-            blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
-            blockSelect.disabled = true;
-            return;
-        }
-
-        // Fetch and populate Districts
-        fetch(`/api/districts/${stateId}/`)
-            .then(response => response.json())
-            .then(districts => {
-                districtSelect.innerHTML = '<option value="">-- Select District --</option>';
-                districts.forEach(district => {
-                    const option = document.createElement("option");
-                    option.value = district.id;
-                    option.textContent = district.display_name;
-                    districtSelect.appendChild(option);
-                });
-                districtSelect.disabled = false;
-            })
-            .catch(error => {
-                console.error("Error fetching districts:", error);
-                alert("Failed to load districts. Please try again later.");
-            });
-    });
-
-    // Handle District Selection to Load Blocks
+    // Fetch blocks based on selected district
     districtSelect.addEventListener("change", function () {
         const districtId = this.value;
-
         if (!districtId) {
             blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
             blockSelect.disabled = true;
             return;
         }
 
-        // Fetch and populate Blocks
+        blockSelect.innerHTML = '<option>Loading...</option>';
+        blockSelect.disabled = true;
+
         fetch(`/api/blocks/${districtId}/`)
             .then(response => response.json())
             .then(blocks => {
