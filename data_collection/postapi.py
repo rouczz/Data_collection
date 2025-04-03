@@ -655,7 +655,7 @@ def push_plantations_to_vaarha(plantation):
         "kyari_name": plantation.kyari_name,
         "area_in_acres": plantation.area_in_acres,
         "plantation_model": plantation.plantation_model,
-        "year": plantation.year,
+        "year": plantation.plantation_year,
         "kyari_type": plantation.kyari_type,
         "boundary": {
             "coordinates": [list(plantation.boundary.coords[0])],

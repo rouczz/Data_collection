@@ -30,7 +30,22 @@
                         <option value="">-- Select Block --</option>
                     </select>
                 </div>
-                
+
+                <div class="mb-3">
+                    <label class="form-label">Village</label>
+                    {{ form.village }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Pincode</label>
+                    {{ form.pincode }}
+                    {% if form.pincode.errors %}
+                        <div class="text-danger">
+                            {{ form.pincode.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label">First Name</label>
                     {{ form.first_name }}
@@ -59,32 +74,6 @@
                     <label class="form-label">Guardian Name</label>
                     {{ form.guardian_name }}
                 </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Village</label>
-                    {{ form.village }}
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Pincode</label>
-                    {{ form.pincode }}
-                    {% if form.pincode.errors %}
-                        <div class="text-danger">
-                            {{ form.pincode.errors }}
-                        </div>
-                    {% endif %}
-                </div>
-
-                {% comment %} <div class="mb-3">
-                    <label for="consent_form">Upload Consent Form:</label>
-                    {{ form.consent_form }}
-                </div>
-                 {% endcomment %}
-
-                {% comment %} <div class="form-check mb-3">
-                    {{ form.farmer_consent }}
-                    <label class="form-check-label">I agree to provide my details</label>
-                </div> {% endcomment %}
 
                 <!-- Hidden Fields for GeoLocation -->
                 <input type="hidden" name="latitude" id="latitude">
@@ -149,7 +138,7 @@ document.addEventListener("DOMContentLoaded", function() {
        
         var map = L.map('map', {
             center: [23.6157, 81.9195], 
-            zoom: 6,
+            zoom: 15,
             maxZoom: 22,  
             layers: hybrid  
         });
@@ -169,6 +158,66 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     
         L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+
+        // Custom control for "Locate Me" button
+        L.Control.Locate = L.Control.extend({
+            onAdd: function(map) {
+                var button = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
+                button.innerHTML = '📍'; // Location icon
+                button.style.backgroundColor = 'white';
+                button.style.width = '40px';
+                button.style.height = '40px';
+                button.style.border = '2px solid gray';
+                button.style.borderRadius = '5px';
+                button.style.cursor = 'pointer';
+
+                // Click event to find user location
+                button.onclick = function() {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                var lat = position.coords.latitude;
+                                var lng = position.coords.longitude;
+                                
+                                map.setView([lat, lng], 14);
+
+                                // Remove old marker before adding new one
+                                if (window.marker) {
+                                    map.removeLayer(window.marker);
+                                }
+
+                                window.marker = L.marker([lat, lng]).addTo(map)
+                                    .bindPopup("Your Current Location").openPopup();
+
+                                document.getElementById("latitude").value = lat;
+                                document.getElementById("longitude").value = lng;
+                            },
+                            function(error) {
+                                alert("Failed to get location. Ensure GPS is enabled.");
+                            },
+                            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                        );
+                    } else {
+                        alert("Geolocation is not supported by your browser.");
+                    }
+                };
+
+                return button;
+            },
+
+            onRemove: function(map) {
+                // Nothing needed here
+            }
+        });
+
+        // Add Locate Me button to the map
+        L.control.locate = function(opts) {
+            return new L.Control.Locate(opts);
+        };
+
+        L.control.locate({ position: 'topright' }).addTo(map);
+
     
 
    

@@ -28,9 +28,9 @@ class FarmAdmin(admin.ModelAdmin):
 class PlantationAdmin(admin.ModelAdmin):
     list_display = (
         'id','farm', 'kyari_name', 'area_in_acres', 
-        'year',  'is_feasible', 'boundary', 'metadata', 'kyari_attributes'
+        'plantation_year', 'boundary', 'metadata', 'kyari_attributes'
     )
-    list_filter = ( 'is_feasible', 'year')
+    list_filter = ( 'is_feasible', 'plantation_year')
     search_fields = ('kyari_name', 'farm__farm_name')
     raw_id_fields = ('farm',)
 

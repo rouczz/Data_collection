@@ -60,9 +60,18 @@ def generate_unique_filename(base_name):
     timestamp = int(time.time())  # Get current timestamp
     unique_id = uuid.uuid4().hex[:6]  # Generate a short unique ID
     return f"{base_name}_{timestamp}_{unique_id}.pdf"
+ # Ensure these functions exist
+
 
 def add_farm(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
+    village_name = farmer.village  # Assuming 'village' is a field in Farmer model
+    base_name = f"{farmer.first_name}_{village_name}_Farm"
+
+    # Check for existing farm names and increment if necessary
+    existing_farms = Farm.objects.filter(farmer=farmer, farm_name__startswith=base_name)
+    farm_count = existing_farms.count() + 1  # Ensure uniqueness
+    default_farm_name = f"{base_name}_{farm_count}"  # Example: "John_Village_Farm_1"
 
     if request.method == "POST":
         form = FarmForm(request.POST, request.FILES)
@@ -71,7 +80,10 @@ def add_farm(request, farmer_id):
         if form.is_valid():
             farm = form.save(commit=False)
             farm.farmer = farmer
-            
+
+            # ✅ Set farm name if the user didn't change it
+            farm.name = request.POST.get("farm_name", default_farm_name)
+
             # ✅ Handle boundary conversion
             if boundary_geojson:
                 try:
@@ -83,27 +95,19 @@ def add_farm(request, farmer_id):
             land_ownership_image = request.FILES.get("land_ownership")
             if land_ownership_image:
                 pdf_file = generate_pdf_from_image(land_ownership_image)  # Convert to PDF
-                
-                    # ✅ Generate a unique file path
                 unique_filename = generate_unique_filename(f"{farmer_id}_land_ownership")
                 pdf_path = f"land_documents/{unique_filename}"
                 default_storage.save(pdf_path, ContentFile(pdf_file.read()))
-                
-                # ✅ Store the file path in the model
-                farm.land_ownership = pdf_path  
+                farm.land_ownership = pdf_path  # Store the file path
 
             # ✅ Process landlord declaration (Convert image to PDF)
             landlord_declaration_image = request.FILES.get("landlord_declaration")
             if landlord_declaration_image:
                 pdf_file = generate_pdf_from_image(landlord_declaration_image)  # Convert to PDF
-                
-                # ✅ Save the PDF file to Django's default storage
                 unique_filename = generate_unique_filename(f"{farmer_id}_landlord_declaration")
                 pdf_path = f"farm_landlord_declarations/{unique_filename}"
                 default_storage.save(pdf_path, ContentFile(pdf_file.read()))
-                
-                # ✅ Store the file path in the model
-                farm.landlord_declaration = pdf_path  
+                farm.landlord_declaration = pdf_path  # Store the file path
 
             farm.save()
             return JsonResponse({"success": True, "farm_id": farm.id})
@@ -113,8 +117,9 @@ def add_farm(request, farmer_id):
     return render(
         request, 
         "data_collection/templates/add_farm.html", 
-        {"form": FarmForm(), "farmer": farmer, "farmer_id": farmer.id}
+        {"form": FarmForm(initial={"farm_name": default_farm_name}), "farmer": farmer, "farmer_id": farmer.id, "default_farm_name": default_farm_name}
     )
+
 
 
 
@@ -139,50 +144,62 @@ def add_farm(request, farmer_id):
 #         form = PlantationForm()
 
 #     return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farm": farm})
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.contrib.gis.geos import GEOSGeometry
+from .models import Farmer, Farm, Plantation
+from .forms import PlantationForm
+import json
+
 def add_plantation(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
     farms = Farm.objects.filter(farmer=farmer)
     
+    if not farms.exists():
+        return JsonResponse({"success": False, "errors": "No farms available for this farmer."})
+
+    # ✅ Auto-select first farm
+    first_farm = farms.first()
+    first_farm_id = first_farm.id if first_farm else None
+    # ✅ Generate auto Kyari Name (farmer + farm + kyari + count)
+    base_kyari_name = f"{farmer.first_name}_Kyari"
+    existing_kyaris = Plantation.objects.filter(farm=first_farm, kyari_name__startswith=base_kyari_name)
+    kyari_count = existing_kyaris.count() + 1  # Ensure uniqueness
+    default_kyari_name = f"{base_kyari_name}_{kyari_count}"
+
     if request.method == "POST":
         print("DEBUG: Request POST Data:", request.POST)
         form = PlantationForm(request.POST)
-        farm_id = request.POST.get("farm_id")
+        farm_id = request.POST.get("farm_id", first_farm.id)  # Default to first farm
         boundary_geojson = request.POST.get("boundary")
-        
+
         if form.is_valid() and boundary_geojson:
             plantation = form.save(commit=False)
             plantation.farmer = farmer
             plantation.farm = get_object_or_404(Farm, id=farm_id)
-            
-            # Parse the GeoJSON string to extract just the geometry portion
+
+            # ✅ Auto-set kyari_name if empty
+            plantation.kyari_name = request.POST.get("kyari_name", default_kyari_name)
+
+            # ✅ Parse and store GeoJSON boundary
             try:
-                import json
                 geojson_obj = json.loads(boundary_geojson)
-                
-                # Extract just the geometry part if it's a Feature
-                if geojson_obj.get('type') == 'Feature':
-                    geometry_json = json.dumps(geojson_obj['geometry'])
-                else:
-                    geometry_json = boundary_geojson
-                
-                # Convert to GEOSGeometry
+                geometry_json = json.dumps(geojson_obj['geometry']) if geojson_obj.get('type') == 'Feature' else boundary_geojson
                 plantation.boundary = GEOSGeometry(geometry_json)
                 plantation.save()
-                return JsonResponse({
-                    "success": True,
-                    "plantation_id": plantation.id,
-                    "farmer_id": farmer_id  # Include the farmer_id in the response
-                })
+                return JsonResponse({"success": True, "plantation_id": plantation.id, "farmer_id": farmer_id})
             except Exception as e:
                 print(f"ERROR parsing GeoJSON: {str(e)}")
                 return JsonResponse({"success": False, "errors": f"Invalid boundary format: {str(e)}"})
         else:
-            errors = form.errors
-            return JsonResponse({"success": False, "errors": dict(errors)})
-    else:
-        form = PlantationForm()
-    
-    return render(request, "data_collection/templates/add_plantation.html", {"form": form, "farms": farms, "farmer": farmer, "farmer_id": farmer.id})
+            return JsonResponse({"success": False, "errors": dict(form.errors)})
+
+    return render(
+        request, 
+        "data_collection/templates/add_plantation.html", 
+        {"form": PlantationForm(initial={"kyari_name": default_kyari_name}), "farms": farms, "farmer": farmer, "farmer_id": farmer.id, "default_kyari_name": default_kyari_name, "first_farm_id": first_farm_id}
+    )
+
 
 
 from django.db.models import Q
@@ -199,17 +216,18 @@ def add_specie(request, farmer_id):
     plantations = Plantation.objects.filter(
         farm__farmer=farmer
     ).annotate(
-        species_count=Count('species')  # Count related species using the related_name 'species'
+        species_count=Count('species')
     ).filter(species_count=0)  # Only include plantations without species
 
+    first_plantation_id = plantations.first().id if plantations.exists() else None  # Get first plantation ID
+
     if request.method == "POST":
-        form = SpecieForm(request.POST, request.FILES)  # Accept files
+        form = SpecieForm(request.POST, request.FILES)
         plantation_id = request.POST.get("plantation_id")
 
         if form.is_valid() and plantation_id:
             plantation = get_object_or_404(Plantation, id=plantation_id)
 
-            # Save the new species
             specie = form.save(commit=False)
             specie.plantation = plantation
             specie.save()
@@ -220,15 +238,21 @@ def add_specie(request, farmer_id):
                 errors['plantation_id'] = ['Please select a plantation']
             return JsonResponse({"success": False, "errors": errors}, status=400)
 
-
     else:
         form = SpecieForm()
 
     return render(
         request,
         "data_collection/templates/add_specie.html",
-        {"form": form, "plantations": plantations, "farmer": farmer, "farmer_id":farmer_id},
+        {
+            "form": form, 
+            "plantations": plantations, 
+            "farmer": farmer, 
+            "farmer_id": farmer_id, 
+            "first_plantation_id": first_plantation_id  # ✅ Pass first plantation ID
+        },
     )
+
 
 def dashboard(request):
     return render(request, "data_collection/templates/dashboard.html") 
@@ -364,7 +388,7 @@ def get_plantations_for_farm(request, farm_id):
             "id": plantation.id,
             "kyari_name": plantation.kyari_name,
             "area_in_acres": plantation.area_in_acres,
-            "year": plantation.year,
+            "year": plantation.plantation_year,
             "kyari_type": plantation.kyari_type,
             "boundary": GEOSGeometry(plantation.boundary).geojson  # Convert to GeoJSON format
         }

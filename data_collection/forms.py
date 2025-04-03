@@ -58,7 +58,7 @@ class PlantationForm(forms.ModelForm):
     class Meta:
         model = Plantation
         exclude = ["boundary"]  # We will handle boundary using Leaflet map
-        fields = ['kyari_name', 'area_in_acres','year', 'is_feasible', 'boundary']
+        fields = ['kyari_name', 'area_in_acres','plantation_year', 'boundary']
 
 
 from django import forms

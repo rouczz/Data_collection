@@ -15,14 +15,25 @@
                 <div class="mb-3">
                     <label for="plantationSelect" class="form-label">Select Plantation</label>
                     <select id="plantationSelect" name="plantation_id" class="form-control" required>
-                        <option value="">-- Select Plantation --</option>
-                        {% for plantation in plantations %}
-                            <option value="{{ plantation.id }}" {% if plantation.has_species %}disabled{% endif %}>
-                                {{ plantation.kyari_name }} (Farm: {{ plantation.farm.farm_name }})
+                        {% if plantations|length > 1 %}
+                            <option value="">-- Select Plantation --</option>
+                            {% for plantation in plantations %}
+                                <option value="{{ plantation.id }}" {% if plantation.has_species %}disabled{% endif %}
+                                    {% if plantation.id == first_plantation_id %}selected{% endif %}>
+                                    {{ plantation.kyari_name }} (Farm: {{ plantation.farm.farm_name }})
+                                </option>
+                            {% endfor %}
+                        {% elif plantations %}
+                            <!-- If only one plantation exists, auto-select it -->
+                            <option value="{{ plantations.first.id }}" selected>
+                                {{ plantations.first.kyari_name }} (Farm: {{ plantations.first.farm.farm_name }})
                             </option>
-                        {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No plantations available</option>
+                        {% endif %}
                     </select>
                 </div>
+                
                 
                 <div class="mb-3">
                     <label for="specieSelect" class="form-label">Select Specie</label>
@@ -113,6 +124,36 @@
         </div>
     </div>
 </div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let plantSpacingField = document.getElementById("id_plant_spacing");
+        let spacingCR = document.getElementById("id_spacing_cr");
+        let spacingCL = document.getElementById("id_spacing_cl");
+        let spacingCT = document.getElementById("id_spacing_ct");
+        let spacingCB = document.getElementById("id_spacing_cb");
+
+        function updateSpacing() {
+            let value = plantSpacingField.value.trim(); // Get selected spacing
+            let parts = value.split("_"); // Split value into two numbers
+            
+            if (parts.length === 2) {
+                let topBottom = parseInt(parts[0]);  // First part (Top/Bottom)
+                let leftRight = parseInt(parts[1]);  // Second part (Left/Right)
+
+                if (!isNaN(topBottom) && !isNaN(leftRight)) {
+                    spacingCT.value = topBottom;  // Set Top Spacing
+                    spacingCB.value = topBottom;  // Set Bottom Spacing
+                    spacingCR.value = leftRight;  // Set Right Spacing
+                    spacingCL.value = leftRight;  // Set Left Spacing
+                }
+            }
+        }
+
+        // Trigger on selection change
+        plantSpacingField.addEventListener("change", updateSpacing);
+    });
+</script>
+
 <script>
     function compressImage(file, quality, maxWidth, callback) {
         const reader = new FileReader();

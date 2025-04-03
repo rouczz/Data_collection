@@ -6,7 +6,11 @@ class Farmer(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     mobile_number = models.CharField(max_length=15,unique=True)
-    gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
+    gender = models.CharField(
+        max_length=10, 
+        choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')], 
+        default='Male'
+    )
     guardian_name = models.CharField(max_length=100, blank=True)
     geo_tag = models.PointField()
     farmer_consent = models.BooleanField(default=True)
@@ -26,7 +30,7 @@ class Farm(models.Model):
     ownership = models.CharField(max_length=10, choices=[('OWNED', 'Owned'), ('LEASED', 'Leased')])
     owner_mobile_number = models.CharField(max_length=15, blank=True, null=True)
     owner_full_name = models.CharField(max_length=100, blank=True, null=True)
-    boundary_method = models.CharField(max_length=10, choices=[('Drawing', 'Drawing'), ('Tapping', 'Tapping')])
+    boundary_method = models.CharField(max_length=10, choices=[('Drawing', 'Drawing'), ('Tapping', 'Tapping')],default='Drawing')
     boundary = models.PolygonField()
     metadata = models.JSONField(default=dict, blank=True, null=True)
     vaarha_id = models.IntegerField(null=True, blank=True)
@@ -40,7 +44,7 @@ class Plantation(models.Model):
     kyari_name = models.CharField(max_length=100)
     area_in_acres = models.FloatField()
     plantation_model = models.CharField(max_length=50, default="BLOCK")
-    year = models.IntegerField()
+    plantation_year = models.IntegerField()
     kyari_type = models.CharField(max_length=50, default="RETROSPECTIVE")
     is_feasible = models.BooleanField(default=True)
     boundary = models.PolygonField()
@@ -51,20 +55,30 @@ class Plantation(models.Model):
     def __str__(self):
         return self.kyari_name
 
+import os
+import uuid
+
+def specie_image_upload(instance, filename):
+    """Generate a unique filename for Specie images."""
+    ext = filename.split('.')[-1]  # Get file extension
+    unique_filename = f"tree_pictures/{instance.plantation.farm.farmer.id}_{instance.plantation.id}_{uuid.uuid4()}.{ext}"
+    return unique_filename
+
 class Specie(models.Model):
     plantation = models.ForeignKey(Plantation, on_delete=models.CASCADE, related_name='species')
     specie_id = models.IntegerField()
     number_of_plants = models.IntegerField()
-    date = models.DateField
     plant_spacing = models.CharField(max_length=10)
     spacing_cr = models.FloatField()
     spacing_cl = models.FloatField()
     spacing_ct = models.FloatField()
     spacing_cb = models.FloatField()
-    centre_top = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
-    centre_bottom = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
-    centre_left = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
-    centre_right = models.ImageField(upload_to='tree_pictures/', null=True, blank=True)
+    
+    # Assign unique filenames
+    centre_top = models.ImageField(upload_to=specie_image_upload, null=True, blank=True)
+    centre_bottom = models.ImageField(upload_to=specie_image_upload, null=True, blank=True)
+    centre_left = models.ImageField(upload_to=specie_image_upload, null=True, blank=True)
+    centre_right = models.ImageField(upload_to=specie_image_upload, null=True, blank=True)
 
     specie_attributes = models.JSONField(default=dict, blank=True, null=True)
     metadata = models.JSONField(default=dict, blank=True, null=True)
@@ -73,6 +87,7 @@ class Specie(models.Model):
 
     def __str__(self):
         return f"Specie {self.specie_id} in {self.plantation.kyari_name}"
+
 
 # class GeotaggedSapling(models.Model):
 #     plantation = models.ForeignKey(Plantation, on_delete=models.CASCADE, related_name='saplings')
