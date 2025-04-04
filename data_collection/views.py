@@ -5,10 +5,11 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.geos import GEOSGeometry
 from .models import *
 
+from django.http import JsonResponse
+
 def create_farmer(request):
     if request.method == 'POST':
-
-        form = FarmerForm(request.POST, request.FILES)  # ✅ Include request.FILES
+        form = FarmerForm(request.POST, request.FILES)  # Include request.FILES
         lat = request.POST.get('latitude')
         lng = request.POST.get('longitude')
 
@@ -16,24 +17,19 @@ def create_farmer(request):
             farmer = form.save(commit=False)
             farmer.block_id = request.POST.get("block_id")  # Save the block_id
             farmer.geo_tag = Point(float(lng), float(lat))
-            
+            farmer.save()  # Save the farmer with the file
 
-            if 'consent_form' in request.FILES:
-                farmer.consent_form = request.FILES['consent_form']
-                
-            farmer.save()  # ✅ Now save the farmer with the file
-            print("✅ Farmer Saved Successfully with File!")
-
-            return redirect('add_farm', farmer_id=farmer.id)  # Redirect to farm creation
+            # Return a JSON response for AJAX
+            return JsonResponse({"success": True, "farmer_id": farmer.id})
 
         else:
-            print("❌ Form Errors:", form.errors)  
+            # Return errors as JSON
+            return JsonResponse({"success": False, "errors": form.errors})
 
     else:
         form = FarmerForm()
 
     return render(request, 'data_collection/templates/create_farmer.html', {'form': form})
-
 
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404

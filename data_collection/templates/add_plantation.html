@@ -72,9 +72,10 @@
         display: block;
     }
 </style>
-    
+   
     <div class="container-fluid mt-4">
-        <h2 class="mb-4 text-primary">Add Plantation</h2>
+       
+        <h2 class="mb-4 text-primary" >Add Plantation for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
         
         <!-- Success/Error Message Placeholder -->
         <div id="message" class="mb-3"></div>
@@ -121,12 +122,14 @@
             
             <!-- Bottom Row - Buttons -->
             <div class="row btn-container">
-                <div class="col-md-9 mb-3">
-                    <button type="submit" class="btn btn-success btn-lg w-100">Submit</button>
+                <!-- Submit Buttons -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success w-100" id="submitAndGoNext">Submit and Go Next</button>
+                    <button type="submit" class="btn btn-primary w-100" id="submitAndAddMore">Submit and Add More</button>
                 </div>
-                <div class="col-md-3 mb-3">
+                {% comment %} <div class="col-md-3 mb-3 mt-3">
                     <button id="addSpecieBtn" class="btn btn-success btn-lg w-100">🌱 Add Specie</button>
-                </div>
+                </div> {% endcomment %}
             </div>
         </form>
     </div>
@@ -537,96 +540,99 @@
         var farmerId = {{ farmer.id }};
         console.log("Farmer ID:", farmerId); // Debugging: Log the farmerId to confirm it's set
     
-        document.getElementById("plantationForm").addEventListener("submit", function (event) {
+        // Add event listeners for both buttons
+        document.getElementById("submitAndGoNext").addEventListener("click", function (event) {
+            handleSubmit(event, "goNext");
+        });
+
+        document.getElementById("submitAndAddMore").addEventListener("click", function (event) {
+            handleSubmit(event, "addMore");
+        });
+
+        // Function to handle form submission
+        async function handleSubmit(event, action) {
             event.preventDefault();
-    
+
+            // Get boundary data
             let boundaryData = document.getElementById("boundary").value;
-    
+
             if (!boundaryData || boundaryData === "null" || boundaryData === "undefined") {
                 alert("⚠️ You must draw a plantation boundary before submitting!");
                 return;
             }
-    
+
             // Additional validation before submission
             let warningVisible = document.getElementById('boundary-warning').style.display !== 'none' && 
-                                 document.getElementById('boundary-warning').className.includes('alert-danger');
+                                document.getElementById('boundary-warning').className.includes('alert-danger');
             
             if (warningVisible) {
                 alert("⚠️ Please fix the boundary issues before submitting!");
                 return;
             }
-    
+
             // Validate farmerId before proceeding
             if (!farmerId || farmerId === "undefined" || farmerId === "null") {
                 alert("⚠️ Farmer ID is missing or invalid. Please refresh the page.");
                 return;
             }
-    
-            let formData = new FormData(this);
-    
-            // Construct the URL and log it for debugging
-            let url = `/add-plantation/${farmerId}/`;
-            console.log("Constructed URL:", url);
-    
-            fetch(url, {
-                method: "POST",
-                body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
-            })
-                .then(response => response.json())
-                .then(data => {
-                    let messageDiv = document.getElementById("message");
-                    messageDiv.innerHTML = "";
-    
-                    if (data.success) {
-                        messageDiv.innerHTML = `
-                            <div class="alert alert-success mt-3">
-                                <p>✅ Plantation added successfully!</p>
-                                <button id="addAnotherPlantationBtn" class="btn btn-primary mt-2">➕ Add Another Plantation</button>
-                                <button id="proceedToSpeciesBtn" class="btn btn-success mt-2">🌱 Proceed to Add Species</button>
-                            </div>
-                        `;
-    
-                        // Hide form after submission
-                        document.getElementById("plantationForm").style.display = "none";
-    
-                        // Attach event listeners for buttons
-                        document.getElementById("addAnotherPlantationBtn").addEventListener("click", addAnotherPlantation);
-                        document.getElementById("proceedToSpeciesBtn").addEventListener("click", function () {
-                            proceedToSpecies(data.farmer_id); // Use the validated farmer_id
-                        });
-                    } else {
-                        messageDiv.innerHTML = `<p class="text-danger">❌ Error: ${JSON.stringify(data.errors)}</p>`;
-                    }
-                })
-                .catch(error => console.error("AJAX Error:", error));
-        });
-    
-        // Reset form for another plantation
-        function addAnotherPlantation() {
-            document.getElementById("plantationForm").reset();
-            document.getElementById("message").innerHTML = "";
-            document.getElementById("plantationForm").style.display = "block";
-            drawnItems.clearLayers();
-            document.getElementById('boundary-warning').style.display = 'none';
-            document.getElementById('boundary-warning').className = 'alert alert-danger mt-3';
-            
-            // Reset plantation styles
-            plantationBoundaries.eachLayer(function(layer) {
-                layer.setStyle({
-                    color: "green",
-                    fillOpacity: 0.2,
-                    weight: 2
+
+            // Show loading message and hide the form
+            document.getElementById("plantationForm").style.display = "none";
+            const messageDiv = document.getElementById("message");
+            messageDiv.innerHTML = `
+                <div class="alert alert-info">
+                    Uploading data, please wait...
+                </div>
+            `;
+
+            try {
+                // Gather form data
+                const formData = new FormData(document.getElementById("plantationForm"));
+
+                // Send AJAX request with the farmer ID included in the URL
+                const response = await fetch(`/add-plantation/${farmerId}/`, {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
                 });
-            });
-        }
-        document.getElementById("addSpecieBtn").addEventListener("click", function() {
-            // Show the plantation boundary form or map
-            window.location.href = `/add-species/{{ farmer.id }}/`;
-        });
-        // Proceed to species form
-        function proceedToSpecies(farmerId) {
-            window.location.href = `/add-species/${farmerId}/`;
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Success message
+                    messageDiv.innerHTML = `
+                        <div class="alert alert-success mt-3">
+                            <p>✅ Plantation added successfully!</p>
+                        </div>
+                    `;
+
+                    // Perform action based on the button clicked
+                    if (action === "goNext") {
+                        window.location.href = `/add-species/${farmerId}/`;
+                    } else if (action === "addMore") {
+                        // Reload the page to reflect the newly added plantation
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000); // Optional delay to show success message briefly
+                    }
+                } else {
+                    // Display error message
+                    messageDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error: ${data.errors || "Unknown error"}
+                        </div>
+                    `;
+                    document.getElementById("plantationForm").style.display = "block"; // Re-enable the form
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                messageDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        An unexpected error occurred. Please try again.
+                    </div>
+                `;
+                document.getElementById("plantationForm").style.display = "block"; // Re-enable the form
+            }
         }
     });
 </script>

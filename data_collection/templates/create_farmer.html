@@ -8,42 +8,27 @@
         <div class="col-md-6">
             <h2 class="mb-3 text-primary">Create a Farmer</h2>
 
-            <form method="post" enctype="multipart/form-data" class="card p-4 shadow">  <!-- ✅ Add enctype -->
-                {% csrf_token %}            
+            <form id="farmerForm" method="post" enctype="multipart/form-data" class="card p-4 shadow">
+                {% csrf_token %}
                 <div class="mb-3">
                     <label for="districtSelect" class="form-label">Select District</label>
                     <select id="districtSelect" name="district" class="form-control">
                         <option value="">Loading districts...</option>
                     </select>
                 </div>
-                
+
                 <div class="mb-3">
                     <label for="blockSelect" class="form-label">Select Block</label>
                     <select id="blockSelect" name="block_id" class="form-control" disabled>
                         <option value="">-- Select Block --</option>
                     </select>
                 </div>
-                
 
-                {% comment %} <div class="mb-3">
-                    <label class="form-label">Village</label>
-                    {{ form.village }}
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Pincode</label>
-                    {{ form.pincode }}
-                    {% if form.pincode.errors %}
-                        <div class="text-danger">
-                            {{ form.pincode.errors }}
-                        </div>
-                    {% endif %}
-                </div> {% endcomment %}
                 <div class="mb-3">
                     <label class="form-label">Village</label>
                     <input type="text" id="village" name="village" class="form-control" required>
                 </div>
-                
+
                 <div class="mb-3">
                     <label class="form-label">Pincode</label>
                     <input type="text" id="pincode" name="pincode" class="form-control" required>
@@ -53,11 +38,12 @@
                     <label class="form-label">First Name</label>
                     {{ form.first_name }}
                 </div>
-                
+
                 <div class="mb-3">
                     <label class="form-label">Last Name</label>
                     {{ form.last_name }}
                 </div>
+
                 <div class="mb-3">
                     <label class="form-label">Mobile Number</label>
                     {{ form.mobile_number }}
@@ -82,8 +68,12 @@
                 <input type="hidden" name="latitude" id="latitude">
                 <input type="hidden" name="longitude" id="longitude">
 
-                <button type="submit" class="btn btn-success w-100">Submit</button>
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-success w-100" id="submitFarmerBtn">Submit Farmer</button>
             </form>
+
+            <!-- Message Placeholder -->
+            <div id="message" class="mt-3"></div>
         </div>
 
         <!-- Map Section -->
@@ -402,6 +392,72 @@ document.addEventListener("DOMContentLoaded", function() {
                 console.error("Error fetching blocks:", error);
                 alert("Failed to load blocks. Please try again later.");
             });
+    });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    const farmerForm = document.getElementById("farmerForm");
+    const messageDiv = document.getElementById("message");
+
+    // Handle form submission via AJAX
+    farmerForm.addEventListener("submit", async function (event) {
+        event.preventDefault(); // Prevent default form submission
+
+        // Show loading message and hide the form
+        const submitButton = document.getElementById("submitFarmerBtn");
+        submitButton.disabled = true; // Disable the submit button
+        farmerForm.style.display = "none"; // Hide the form
+        messageDiv.innerHTML = `
+            <div class="alert alert-info">
+                Uploading data, please wait...
+            </div>
+        `;
+
+        try {
+            // Gather form data
+            const formData = new FormData(farmerForm);
+
+            // Send AJAX request
+            const response = await fetch("{% url 'create_farmer' %}", {
+                method: "POST",
+                body: formData,
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Success message
+                messageDiv.innerHTML = `
+                    <div class="alert alert-success mt-3">
+                        <p>✅ Farmer created successfully!</p>
+                    </div>
+                `;
+
+                // Redirect to the farm creation page after a short delay
+                setTimeout(() => {
+                    window.location.href = `/add_farm/${data.farmer_id}/`;
+                }, 1000); // Optional delay to show success message briefly
+            } else {
+                // Display error message
+                messageDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error: ${JSON.stringify(data.errors || "Unknown error")}
+                    </div>
+                `;
+                farmerForm.style.display = "block"; // Re-enable the form
+                submitButton.disabled = false; // Re-enable the submit button
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            messageDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    An unexpected error occurred. Please try again.
+                </div>
+            `;
+            farmerForm.style.display = "block"; // Re-enable the form
+            submitButton.disabled = false; // Re-enable the submit button
+        }
     });
 });
 </script>

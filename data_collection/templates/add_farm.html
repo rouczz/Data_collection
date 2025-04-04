@@ -81,10 +81,14 @@
     <h3>Draw the Farm Boundary</h3>
     <div id="map" style="height: 400px;"></div>
     
-   <button type="submit" class="btn btn-primary mt-3">Submit Farm</button>
-    <div class="mt-3">
-        <button id="addPlantationBoundaryBtn" class="btn btn-success">🌱 Add Plantation Boundary</button>
+   <!-- Submit Buttons -->
+    <div class="d-grid gap-2 mt-3">
+        <button type="submit" class="btn btn-success w-100" id="submitAndGoNext">Submit and Go Next</button>
+        <button type="submit" class="btn btn-primary w-100" id="submitAndAddMore">Submit and Add More</button>
     </div>
+    {% comment %} <div class="mt-3">
+        <button id="addPlantationBoundaryBtn" class="btn btn-success">🌱 Add Plantation Boundary</button>
+    </div> {% endcomment %}
 </form>
 
 <!-- Leaflet & Leaflet Draw JS -->
@@ -509,96 +513,98 @@
         ownershipField.addEventListener("change", toggleLeasedFields);
     });
     // AJAX Form Submission
-    document.getElementById("farmForm").addEventListener("submit", function(event) {
-        event.preventDefault(); // Prevent default form submission
+    document.addEventListener("DOMContentLoaded", function () {
+        const farmForm = document.getElementById("farmForm");
+        const messageDiv = document.getElementById("message");
     
-        // Double-check that boundary exists and doesn't intersect
-        if (!document.getElementById("boundary").value) {
-            document.getElementById("message").innerHTML = `
-                <div class="alert alert-danger">
-                    Please draw a farm boundary on the map.
-                </div>
-            `;
-            return;
-        }
+        // Function to handle form submission
+        async function handleSubmit(event, action) {
+            event.preventDefault();
     
-        var formData = new FormData(this);
-        fetch("{% url 'add_farm' farmer.id %}", {
-            method: "POST",
-            body: formData,
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-        })
-        .then(response => response.json())
-        .then(data => {
-            let messageDiv = document.getElementById("message");
-            if (data.success) {
+            // Double-check that boundary exists
+            if (!document.getElementById("boundary").value) {
                 messageDiv.innerHTML = `
-                    <div class="alert alert-success mt-3">
-                        <p>✅ Farm created successfully!</p>
-                        <button id="addAnotherFarmBtn" class="btn btn-primary mt-2" >➕ Add Another Farm</button>
-                        <button id="proceedToPlantation" class="btn btn-success mt-2">
-                        🌱 Proceed to Plantation
-                        </button>
+                    <div class="alert alert-danger">
+                        Please draw a farm boundary on the map.
                     </div>
                 `;
-                // Hide the form after successful submission
-                document.getElementById("farmForm").style.display = "none";
-                // Refresh farms list and map
-                fetchExistingFarms();
-                document.getElementById("addAnotherFarmBtn").addEventListener("click", addAnotherFarm);
-
-                document.getElementById("proceedToPlantation").addEventListener("click", function() {
-                    
-                    proceedToPlantation(data.farmer_id ||{{ farmer.id }});
-                });
-            } else {
-                messageDiv.innerHTML = `<p style='color: red;'>❌ Error: ${JSON.stringify(data.errors)}</p>`;
+                return;
             }
-        })
-        .catch(error => console.error("AJAX Error:", error));
-    });
     
-    // Function to add another farm
-    function addAnotherFarm() {
-        document.getElementById("farmForm").reset();
-        document.getElementById("message").innerHTML = "";
-        document.getElementById("farmForm").style.display = "block";
-        document.getElementById("intersection-warning").style.display = "none";
-        document.querySelector('#farmForm button[type="submit"]').disabled = false;
-        
-        // Clear drawn items
-        if (window.drawnItems) {
-            window.drawnItems.clearLayers();
-        }
-    }
+            // Show loading message and hide the form
+            farmForm.style.display = "none";
+            messageDiv.innerHTML = `
+                <div class="alert alert-info">
+                    Uploading data, please wait...
+                </div>
+            `;
     
-    // Function to proceed to plantation
-    function proceedToPlantation(farmerId) {
-        if (!farmerId) {
-            alert("❌ Farmer ID missing! Cannot proceed to plantation.");
-            return;
+            try {
+                // Gather form data
+                const formData = new FormData(farmForm);
+    
+                // Send AJAX request with the farmer ID included in the URL
+                const response = await fetch("{% url 'add_farm' farmer.id %}", {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+    
+                const data = await response.json();
+    
+                if (data.success) {
+                    // Success message
+                    messageDiv.innerHTML = `
+                        <div class="alert alert-success mt-3">
+                            <p>✅ Farm created successfully!</p>
+                        </div>
+                    `;
+    
+                    // Perform action based on the button clicked
+                    if (action === "goNext") {
+                        proceedToPlantation(data.farmer_id || {{ farmer.id }});
+                    } else if (action === "addMore") {
+                        // Reload the page to reflect the newly added farm
+                        location.reload();
+                    }
+                } else {
+                    // Display error message
+                    messageDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error: ${data.errors || "Unknown error"}
+                        </div>
+                    `;
+                    farmForm.style.display = "block"; // Re-enable the form
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                messageDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        An unexpected error occurred. Please try again.
+                    </div>
+                `;
+                farmForm.style.display = "block"; // Re-enable the form
+            }
         }
-        window.location.href = `/add-plantation/${farmerId}/`;
-    }
-    document.getElementById("addPlantationBoundaryBtn").addEventListener("click", function() {
-        // Show the plantation boundary form or map
-        window.location.href = `/add-plantation/{{ farmer.id }}/`;
+    
+        // Attach event listeners for both buttons
+        document.getElementById("submitAndGoNext").addEventListener("click", function (event) {
+            handleSubmit(event, "goNext");
+        });
+    
+        document.getElementById("submitAndAddMore").addEventListener("click", function (event) {
+            handleSubmit(event, "addMore");
+        });
+    
+        // Function to proceed to plantation
+        function proceedToPlantation(farmerId) {
+            if (!farmerId) {
+                alert("❌ Farmer ID missing! Cannot proceed to plantation.");
+                return;
+            }
+            window.location.href = `/add-plantation/${farmerId}/`;
+        }
     });
-    // Function to fetch existing farms (available globally)
-    function fetchExistingFarms() {
-        fetch(`/api/farms/{{ farmer.id }}/`, {
-            method: "GET",
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Handle farm data...
-            // This would be processed by the DOM content loaded handler
-            // Just trigger a page refresh to reload everything
-            window.location.reload();
-        })
-        .catch(error => console.error("Error fetching farms:", error));
-    }
 </script>
 
 {% endblock %}

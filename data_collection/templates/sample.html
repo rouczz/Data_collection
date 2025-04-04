@@ -5,8 +5,7 @@
 <div class="container mt-4">
     <div class="row">
         <div class="col-md-8 offset-md-2">
-            
-            <h2 class="mb-4 text-primary" >Add Specie for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
+            <h2 class="mb-3 text-primary">Add Species to Plantation</h2>
             <div id="message"></div>
 
             <form id="specieForm" method="post">
@@ -117,11 +116,7 @@
                     <input type="date" id="plantationDate" name="plantation_date" class="form-control" required>
                 </div>
 
-                 <!-- Submit Buttons -->
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-success w-100" id="submitAndGoNext">Submit and Go Next</button>
-                    <button type="submit" class="btn btn-primary w-100" id="submitAndAddMore">Submit and Add More Species</button>
-                </div>
+                <button type="submit" class="btn btn-success mt-3 w-100">Submit</button>
             </form>
 
             <!-- Success/Error Message -->
@@ -232,83 +227,78 @@
 
 <!-- AJAX Form Submission -->
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const specieForm = document.getElementById("specieForm");
-        const messageDiv = document.getElementById("message");
+    document.getElementById("specieForm").addEventListener("submit", function(event) {
+        event.preventDefault();
     
-        // Get the farmer ID from the context (e.g., passed via Django template)
-        const farmerId = {{ farmer.id }}; // Ensure this is correctly passed from the backend
+        var formData = new FormData(this);
+        var farmerId = {{ farmer.id }};  // Get the farmer ID from context
     
-        // Function to handle form submission
-        async function handleSubmit(event, action) {
-            event.preventDefault();
+        fetch(`/add-species/${farmerId}/`, {  // Updated URL to use farmer_id
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            let messageDiv = document.getElementById("message");
+            messageDiv.innerHTML = ""; // Clear previous messages
     
-            // Show loading message and hide the form
-            specieForm.style.display = "none";
-            messageDiv.innerHTML = `
-                <div class="alert alert-info">
-                    Uploading data, please wait...
-                </div>
-            `;
-    
-            try {
-                // Gather form data
-                const formData = new FormData(specieForm);
-    
-                // Send AJAX request with the farmer ID included in the URL
-                const response = await fetch(`/add-species/${farmerId}/`, { // Include farmerId in the URL
-                    method: "POST",
-                    body: formData,
-                    headers: { "X-Requested-With": "XMLHttpRequest" }
-                });
-    
-                const data = await response.json();
-    
-                if (data.success) {
-                    // Success message with further instructions
-                    messageDiv.innerHTML = `
-                        <div class="alert alert-success mt-3">
-                            <p>✅ Species added successfully!</p>
-                        </div>
-                    `;
-    
-                    // Perform action based on the button clicked
-                    if (action === "goNext") {
-                        window.location.href = `/upload-media/${farmerId}/`;
-                    } else if (action === "addMore") {
-                        specieForm.reset();
-                        messageDiv.innerHTML = "";
-                        specieForm.style.display = "block";
-                    }
-                } else {
-                    // Display error message
-                    messageDiv.innerHTML = `
-                        <div class="alert alert-danger">
-                            Error: ${data.errors || "Unknown error"}
-                        </div>
-                    `;
-                    specieForm.style.display = "block"; // Re-enable the form
-                }
-            } catch (error) {
-                console.error("Error:", error);
+            if (data.success) {
                 messageDiv.innerHTML = `
-                    <div class="alert alert-danger">
-                        An unexpected error occurred. Please try again.
+                    <div class="alert alert-success mt-3">
+                        <p>✅ Species added successfully!</p>
+                        <button id="addAnotherSpeciesBtn" class="btn btn-primary mt-2">➕ Add Another Species</button>
+                        <button id="mediauploadBtn" class="btn btn-primary mt-2">📸 Upload Media</button>
                     </div>
                 `;
-                specieForm.style.display = "block"; // Re-enable the form
+    
+                // Hide form after submission
+                document.getElementById("specieForm").style.display = "none";
+    
+                // Add event listeners to buttons
+                document.getElementById("addAnotherSpeciesBtn").addEventListener("click", addAnotherSpecies);
+                document.getElementById("mediauploadBtn").addEventListener("click", function() {
+                    window.location.href = `/upload-media/${farmerId}/`;
+                });
+            } else {
+                // Display errors
+                let errorHtml = '<div class="alert alert-danger mt-3">';
+                if (typeof data.errors === 'object') {
+                    errorHtml += '<ul>';
+                    for (const [field, errors] of Object.entries(data.errors)) {
+                        errorHtml += `<li>${field}: ${errors.join(', ')}</li>`;
+                    }
+                    errorHtml += '</ul>';
+                } else {
+                    errorHtml += `<p>${JSON.stringify(data.errors)}</p>`;
+                }
+                errorHtml += '</div>';
+                messageDiv.innerHTML = errorHtml;
             }
-        }
-    
-        // Add event listeners for both buttons
-        document.getElementById("submitAndGoNext").addEventListener("click", function (event) {
-            handleSubmit(event, "goNext");
-        });
-    
-        document.getElementById("submitAndAddMore").addEventListener("click", function (event) {
-            handleSubmit(event, "addMore");
+        })
+        .catch(error => {
+            console.error("AJAX Error:", error);
+            document.getElementById("message").innerHTML = `
+                <div class="alert alert-danger mt-3">
+                    <p>❌ An error occurred. Please try again.</p>
+                </div>
+            `;
         });
     });
+    
+    // Function to reset form and allow adding another species
+    function addAnotherSpecies() {
+        document.getElementById("specieForm").reset();  // Reset form
+        document.getElementById("message").innerHTML = "";  // Clear success message
+        document.getElementById("specieForm").style.display = "block";  // Show form again
+    }
     document.addEventListener("DOMContentLoaded", function () {
         const specieSelect = document.getElementById("specieSelect");
     
