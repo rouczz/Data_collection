@@ -254,7 +254,7 @@ def add_specie(request, farmer_id):
         },
     )
 
-
+@login_required
 def dashboard(request):
     return render(request, "data_collection/templates/dashboard.html") 
 
@@ -262,7 +262,7 @@ def dashboard(request):
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import Farmer, Farm, Plantation
-@login_required
+
 def get_farmers_list(request):
     search_query = request.GET.get("search", "").strip()  # Get search input
     farmers = Farmer.objects.filter(created_by=request.user)
@@ -286,7 +286,7 @@ def get_farmers_list(request):
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from .models import Farmer, Farm, Plantation, Specie
-@login_required
+
 def get_farmer_details(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
     farms = Farm.objects.filter(farmer=farmer)
@@ -328,7 +328,6 @@ def get_farmer_details(request, farmer_id):
         {
             "id": plantation.id,
             "kyari_name": plantation.kyari_name,
-            "number_of_saplings": plantation.number_of_saplings,
             "plantation_model": plantation.plantation_model,
             "kyari_type": plantation.kyari_type,
             "is_feasible": plantation.is_feasible,

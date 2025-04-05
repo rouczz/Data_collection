@@ -1,95 +1,294 @@
-
 {% extends "data_collection/templates/base.html" %}
 {% load static %}
 
 {% block content %}
-<h2>Add Farm for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
-
-<!-- Success/Error Message -->
-<div id="message"></div>
-
-<!-- Existing Farms List -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h3>Existing Farms</h3>
+<div class="row">
+  <div class="col-lg-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0">
+        <i data-lucide="map-pin" class="me-2" size="24"></i>
+        Add Farm for {{ farmer.first_name }} {{ farmer.last_name }}
+      </h2>
     </div>
-    <div class="card-body">
-        <div id="farmsList">
-            <p>Loading existing farms...</p>
-        </div>
+    
+    <!-- Alert Messages -->
+    <div id="messageContainer">
+      <div class="alert alert-success form-alert" id="successAlert" role="alert" style="display:none;">
+        <i data-lucide="check-circle" size="18" class="me-2"></i>
+        <span id="successMessage"></span>
+      </div>
+      <div class="alert alert-danger form-alert" id="errorAlert" role="alert" style="display:none;">
+        <i data-lucide="alert-circle" size="18" class="me-2"></i>
+        <span id="errorMessage"></span>
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- Farm Form -->
-{% comment %} <form id="farmForm" method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <input type="hidden" name="boundary" id="boundary">
-    <button type="submit" class="btn btn-primary">Submit Farm</button>
-    <!-- Button to Add Plantation Boundary -->
-    <div class="mt-3">
-        <button id="addPlantationBoundaryBtn" class="btn btn-success">🌱 Add Plantation Boundary</button>
+<div class="row">
+  <!-- Existing Farms Section -->
+  <div class="col-lg-4 mb-4">
+    <div class="card">
+      <div class="card-header bg-light">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i data-lucide="list" size="18" class="me-2"></i>
+            Existing Farms
+          </h5>
+          <span class="badge bg-primary" id="farmCount">0</span>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div id="farmsList" class="p-3">
+          <div class="d-flex justify-content-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="noFarmsMessage" class="text-center py-4" style="display:none;">
+          <i data-lucide="info" size="40" class="text-muted mb-2"></i>
+          <p class="text-muted">No farms added yet</p>
+        </div>
+      </div>
     </div>
-</form> {% endcomment %}
-<form id="farmForm" method="post" enctype="multipart/form-data">
-    {% csrf_token %}
+  </div>
+  
+  <!-- Add Farm Form Section -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">
+          <i data-lucide="plus-circle" size="18" class="me-2"></i>
+          Farm Details
+        </h5>
+      </div>
+      <div class="card-body">
+        <form id="farmForm" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_farm_name" class="form-label">Farm Name</label>
+              {{ form.farm_name }}
+              <style>
+                #id_farm_name {
+                  width: 100%;
+                  padding: 0.6rem 1rem;
+                  border-radius: 6px;
+                  border: 1px solid #ced4da;
+                  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                  display: block;
+                  font-size: 1rem;
+                  font-weight: 400;
+                  line-height: 1.5;
+                  color: #212529;
+                  background-color: #fff;
+                  background-clip: padding-box;
+                  appearance: none;
+                }
+              </style>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+              <label for="id_area_in_acres" class="form-label">Area (in acres)</label>
+              {{ form.area_in_acres }}
+              <small class="text-muted">This will be calculated based on boundary</small>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="id_ownership" class="form-label">Ownership</label>
+            {{ form.ownership }}
+          </div>
+          
+          <!-- Leased Fields (Initially Hidden) -->
+          <div id="leasedFields" style="display: none;">
+            <div class="card mb-3 border-warning">
+              <div class="card-body">
+                <h6 class="card-title">
+                  <i data-lucide="file-text" size="18" class="me-2"></i>
+                  Lease Information
+                </h6>
+                
+                <div class="row mt-3">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_owner_full_name" class="form-label">Owner Full Name</label>
+                    {{ form.owner_full_name }}
+                  </div>
+                  
+                  <div class="col-md-6 mb-3">
+                    <label for="id_owner_mobile_number" class="form-label">Owner Mobile Number</label>
+                    {{ form.owner_mobile_number }}
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="landlordDeclaration" class="form-label">
+                    <i data-lucide="file" size="16" class="me-1"></i>
+                    Landlord Declaration
+                  </label>
+                  <input type="file" id="landlordDeclaration" name="landlord_declaration" 
+                         accept="image/*" class="form-control" capture="environment">
+                  <img id="landlordPreview" class="mt-2" alt="Declaration preview" 
+                       style="max-width: 200px; max-height: 150px; border-radius: 4px; display: none;">
+                  <small class="form-text text-muted">Upload a photo of the landlord declaration document</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Land Ownership Document -->
+          <div class="mb-3">
+            <label for="landOwnership" class="form-label">
+              <i data-lucide="file-text" size="16" class="me-1"></i>
+              Land Ownership Document
+            </label>
+            <input type="file" id="landOwnership" name="land_ownership" 
+                   accept="image/*" class="form-control" capture="environment">
+            <img id="ownershipPreview" class="mt-2" alt="Document preview"
+                 style="max-width: 200px; max-height: 150px; border-radius: 4px; display: none;">
+            <small class="form-text text-muted">Upload a photo of the ownership document</small>
+          </div>
+          
+          <!-- Boundary Method -->
+          <div class="mb-4">
+            <label for="id_boundary_method" class="form-label">Boundary Method</label>
+            {{ form.boundary_method }}
+            <small class="form-text text-muted">Choose how you want to mark the farm boundary</small>
+          </div>
+          
+          <input type="hidden" name="boundary" id="boundary">
+          
+          <!-- Map Container -->
+          <div class="card mb-4">
+            <div class="card-body p-0 position-relative">
+              <div id="map" style="height: 400px; border-radius: 12px; margin-bottom: 0;"></div>
+              <div class="position-absolute top-0 end-0 m-2" id="mapControls">
+                <button type="button" class="btn btn-sm btn-light mb-2" id="clearMapBtn">
+                  <i data-lucide="trash-2" size="16"></i> Clear
+                </button>
+                <button type="button" class="btn btn-sm btn-light" id="currentLocationBtn">
+                  <i data-lucide="map-pin" size="16"></i> My Location
+                </button>
+              </div>
+            </div>
+            <div class="card-footer" id="mapInfo">
+              <div style="background: #e9f7f2; border-radius: 6px; padding: 0.75rem; border-left: 3px solid var(--primary-color);">
+
+              </div>
+              <div class="text-muted small mt-2">
+                <i data-lucide="info" size="16" class="me-1"></i>
+                For manual boundary, click on the map to add points. 
+              </div>
+            </div>
+          </div>
+          
+          <!-- Submit Buttons -->
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-success" id="submitAndGoNext">
+              <i data-lucide="save" size="18" class="me-2"></i>
+              Save Farm and Continue
+            </button>
+            <button type="submit" class="btn btn-primary" id="submitAndAddMore">
+              <i data-lucide="plus" size="18" class="me-2"></i>
+              Save Farm and Add Another
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add form style for Django generated fields -->
+<style>
+  /* Basic styling for Django form elements */
+  select, input[type="text"], input[type="number"], input[type="tel"], input[type="email"], textarea {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    display: block;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    appearance: none;
+  }
+  
+  select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    padding-right: 2.5rem;
+  }
+  
+  select:focus, input:focus, textarea:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 0.25rem rgba(41, 187, 137, 0.25);
+    outline: 0;
+  }
+</style>
+
+<!-- File Upload Preview Script -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Show/hide leased fields based on ownership selection
+    const ownershipSelect = document.getElementById('id_ownership');
+    const leasedFields = document.getElementById('leasedFields');
     
-    <div class="mb-3">
-        <label for="id_farm_name">Farm Name:</label>
-        {{ form.farm_name }}
-    </div>
-
-    <div class="mb-3">
-        <label for="id_area_in_acres">Area (in acres):</label>
-        {{ form.area_in_acres }}
-    </div>
-
-    <div class="mb-3">
-        <label for="id_ownership">Ownership:</label>
-        {{ form.ownership }}
-    </div>
-
-    <!-- Leased Fields (Initially Hidden) -->
-    <div id="leasedFields" style="display: none;">
-        <div class="mb-3">
-            <label for="id_owner_mobile_number">Owner Mobile Number:</label>
-            {{ form.owner_mobile_number }}
-        </div>
-
-        <div class="mb-3">
-            <label for="id_owner_full_name">Owner Full Name:</label>
-            {{ form.owner_full_name }}
-        </div>
-
-        <div class="mb-3">
-            <label for="id_landlord_declaration">Landlord Declaration </label>
-            <input type="file" id="landlordDeclaration" name="landlord_declaration" accept="image/*" class="form-control">
-        </div>
-    </div>
-            <!-- Land Ownership Document -->
-    <div class="mb-3">
-        <label class="form-label">Land Ownership Document </label>
-        <input type="file" id="landOwnership" name="land_ownership" accept="image/*"   class="form-control">
-    </div>
-    <div class="mb-3">
-        <label for="id_boundary_method">Boundary Method:</label>
-        {{ form.boundary_method }}
-    </div>
-
-    <input type="hidden" name="boundary" id="boundary">
-    <!-- Map Container -->
-    <h3>Draw the Farm Boundary</h3>
-    <div id="map" style="height: 400px;"></div>
+    ownershipSelect.addEventListener('change', function() {
+      if (this.value === 'leased') {
+        leasedFields.style.display = 'block';
+      } else {
+        leasedFields.style.display = 'none';
+      }
+    });
     
-   <!-- Submit Buttons -->
-    <div class="d-grid gap-2 mt-3">
-        <button type="submit" class="btn btn-success w-100" id="submitAndGoNext">Submit and Go Next</button>
-        <button type="submit" class="btn btn-primary w-100" id="submitAndAddMore">Submit and Add More</button>
-    </div>
-    {% comment %} <div class="mt-3">
-        <button id="addPlantationBoundaryBtn" class="btn btn-success">🌱 Add Plantation Boundary</button>
-    </div> {% endcomment %}
-</form>
+    // Initial check for ownership field
+    if (ownershipSelect.value === 'leased') {
+      leasedFields.style.display = 'block';
+    }
+    
+    // Image preview for landlord declaration
+    document.getElementById('landlordDeclaration').addEventListener('change', function(e) {
+      const preview = document.getElementById('landlordPreview');
+      if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+        }
+        reader.readAsDataURL(this.files[0]);
+      }
+    });
+    
+    // Image preview for ownership document
+    document.getElementById('landOwnership').addEventListener('change', function(e) {
+      const preview = document.getElementById('ownershipPreview');
+      if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+        }
+        reader.readAsDataURL(this.files[0]);
+      }
+    });
+    
+    // Initialize Lucide icons for dynamically added elements
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
 
 <!-- Leaflet & Leaflet Draw JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"/>

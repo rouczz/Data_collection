@@ -1,85 +1,190 @@
+
+
+
 {% extends "data_collection/templates/base.html" %}
 {% load static %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row">
-        <!-- Form Section -->
-        <div class="col-md-6">
-            <h2 class="mb-3 text-primary">Create a Farmer</h2>
+        <div class="col-lg-6 mb-4">
+            <div class="d-flex align-items-center mb-3">
+                <i data-lucide="user-plus" class="text-primary me-2" size="28"></i>
+                <h2 class="mb-0 text-primary">Create a Farmer</h2>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <form id="farmerForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Location Section -->
+                        <div class="mb-4">
+                            <h5 class="card-title mb-3 d-flex align-items-center">
+                                <i data-lucide="map-pin" class="text-primary me-2" size="18"></i>
+                                <span>Location Details</span>
+                            </h5>
+                            
+                            <div class="mb-3">
+                                <label for="districtSelect" class="form-label">District</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i data-lucide="map" size="18"></i>
+                                    </span>
+                                    <select id="districtSelect" name="district" class="form-select">
+                                        <option value="">Loading districts...</option>
+                                    </select>
+                                </div>
+                                <div id="districtLoading" class="text-muted mt-1 small" style="display: none;">
+                                    <span class="spinner-border spinner-border-sm"></span> Loading districts...
+                                </div>
+                            </div>
 
-            <form id="farmerForm" method="post" enctype="multipart/form-data" class="card p-4 shadow">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label for="districtSelect" class="form-label">Select District</label>
-                    <select id="districtSelect" name="district" class="form-control">
-                        <option value="">Loading districts...</option>
-                    </select>
-                </div>
+                            <div class="mb-3">
+                                <label for="blockSelect" class="form-label">Block</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i data-lucide="map-pin" size="18"></i>
+                                    </span>
+                                    <select id="blockSelect" name="block_id" class="form-select" disabled>
+                                        <option value="">-- Select Block --</option>
+                                    </select>
+                                </div>
+                                <div id="blockLoading" class="text-muted mt-1 small" style="display: none;">
+                                    <span class="spinner-border spinner-border-sm"></span> Loading blocks...
+                                </div>
+                            </div>
 
-                <div class="mb-3">
-                    <label for="blockSelect" class="form-label">Select Block</label>
-                    <select id="blockSelect" name="block_id" class="form-control" disabled>
-                        <option value="">-- Select Block --</option>
-                    </select>
-                </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Village</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i data-lucide="home" size="18"></i>
+                                        </span>
+                                        <input type="text" id="village" name="village" class="form-control" required>
+                                    </div>
+                                </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Village</label>
-                    <input type="text" id="village" name="village" class="form-control" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Pincode</label>
-                    <input type="text" id="pincode" name="pincode" class="form-control" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">First Name</label>
-                    {{ form.first_name }}
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Last Name</label>
-                    {{ form.last_name }}
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Mobile Number</label>
-                    {{ form.mobile_number }}
-                    {% if form.mobile_number.errors %}
-                        <div class="text-danger">
-                            {{ form.mobile_number.errors }}
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Pincode</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i data-lucide="mail" size="18"></i>
+                                        </span>
+                                        <input type="text" id="pincode" name="pincode" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    {% endif %}
+                        
+                        <!-- Personal Details Section -->
+                        <div class="mb-4">
+                            <h5 class="card-title mb-3 d-flex align-items-center">
+                                <i data-lucide="user" class="text-primary me-2" size="18"></i>
+                                <span>Personal Details</span>
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">First Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i data-lucide="user" size="18"></i>
+                                        </span>
+                                        {{ form.first_name }}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Last Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i data-lucide="user" size="18"></i>
+                                        </span>
+                                        {{ form.last_name }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Mobile Number</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i data-lucide="phone" size="18"></i>
+                                    </span>
+                                    {{ form.mobile_number }}
+                                </div>
+                                {% if form.mobile_number.errors %}
+                                    <div class="text-danger mt-1">
+                                        {{ form.mobile_number.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Gender</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i data-lucide="users" size="18"></i>
+                                        </span>
+                                        {{ form.gender }}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Guardian Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i data-lucide="user-check" size="18"></i>
+                                        </span>
+                                        {{ form.guardian_name }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Fields for GeoLocation -->
+                        <input type="hidden" name="latitude" id="latitude">
+                        <input type="hidden" name="longitude" id="longitude">
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-success w-100 d-flex align-items-center justify-content-center" id="submitFarmerBtn">
+                            <i data-lucide="save" class="me-2" size="18"></i>
+                            <span>Submit Farmer</span>
+                        </button>
+                    </form>
                 </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Gender</label>
-                    {{ form.gender }}
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Guardian Name</label>
-                    {{ form.guardian_name }}
-                </div>
-
-                <!-- Hidden Fields for GeoLocation -->
-                <input type="hidden" name="latitude" id="latitude">
-                <input type="hidden" name="longitude" id="longitude">
-
-                <!-- Submit Button -->
-                <button type="submit" class="btn btn-success w-100" id="submitFarmerBtn">Submit Farmer</button>
-            </form>
+            </div>
 
             <!-- Message Placeholder -->
             <div id="message" class="mt-3"></div>
         </div>
 
         <!-- Map Section -->
-        <div class="col-md-6">
-            <h3 class="mb-3 text-primary">Select Farmer's Location</h3>
-            <div id="map" class="shadow rounded" style="height: 400px;"></div>
+        <div class="col-lg-6">
+            <div class="d-flex align-items-center mb-3">
+                <i data-lucide="map" class="text-primary me-2" size="28"></i>
+                <h3 class="mb-0 text-primary">Select Farmer's Location</h3>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-0">
+                    <div id="map-loading" class="position-absolute top-50 start-50 translate-middle" style="z-index: 100; display: none;">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading map...</span>
+                        </div>
+                    </div>
+                    <div id="map" class="rounded" style="height: 450px;"></div>
+                </div>
+                <div class="card-footer bg-light">
+                    <small class="text-muted d-flex align-items-center">
+                        <i data-lucide="info" class="me-2" size="16"></i>
+                        Click anywhere on the map to select a location
+                    </small>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -91,133 +196,212 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-        // Base map layers
-        var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 22  // ✅ Allow max zoom
-        });
+    // Initialize Lucide icons
+    lucide.createIcons();
     
-        var satellite = L.tileLayer('/tiles/s/{z}/{x}/{y}', {
-            attribution: '&copy; Google Satellite',
-            maxZoom: 22
-        });
-        
-        var terrain = L.tileLayer('/tiles/p/{z}/{x}/{y}', {
-            attribution: '&copy; Google Terrain',
-            maxZoom: 22
-        });
-        
-        var hybrid = L.tileLayer('/tiles/y/{z}/{x}/{y}', {
-            attribution: '&copy; Google Hybrid',
-            maxZoom: 22
-        });
+    // Show map loading indicator
+    document.getElementById("map-loading").style.display = "flex";
     
-        var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '&copy; Esri World Imagery',
-            maxZoom: 22
-        });
+    // Base map layers
+    var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 22  // ✅ Allow max zoom
+    });
+
+    var satellite = L.tileLayer('/tiles/s/{z}/{x}/{y}', {
+        attribution: '&copy; Google Satellite',
+        maxZoom: 22
+    });
     
-        // Overlay for Place Names & Boundaries
-        var esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '&copy; Esri, HERE, Garmin',
-            maxZoom: 22
-        });
-        var esriClarity = L.tileLayer(
-            'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '&copy; Esri, Maxar, Earthstar Geographics',
-            maxZoom: 22  // ✅ Allows deeper zoom levels
-        });       
+    var terrain = L.tileLayer('/tiles/p/{z}/{x}/{y}', {
+        attribution: '&copy; Google Terrain',
+        maxZoom: 22
+    });
     
-       
-        var map = L.map('map', {
-            center: [23.6157, 81.9195], 
-            zoom: 15,
-            maxZoom: 22,  
-            layers: hybrid  
-        });
+    var hybrid = L.tileLayer('/tiles/y/{z}/{x}/{y}', {
+        attribution: '&copy; Google Hybrid',
+        maxZoom: 22
+    });
+
+    var esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri World Imagery',
+        maxZoom: 22
+    });
+
+    // Overlay for Place Names & Boundaries
+    var esriLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri, HERE, Garmin',
+        maxZoom: 22
+    });
     
-        // Layer control to switch between different maps
-        var baseMaps = {
-            "Streets": streets,
-            "Google Satellite": satellite,
-            "Google Terrain": terrain,
-            "Google Hybrid": hybrid,
-            "Esri World Imagery": esri,
-            "Esri Clarity": esriClarity
-        };
-    
-        var overlayMaps = {
-            "Place Names & Boundaries": esriLabels
-        };
-    
-        L.control.layers(baseMaps, overlayMaps).addTo(map);
+    var esriClarity = L.tileLayer(
+        'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+        maxZoom: 22  // ✅ Allows deeper zoom levels
+    });       
 
+    var map = L.map('map', {
+        center: [23.6157, 81.9195], 
+        zoom: 15,
+        maxZoom: 22,  
+        layers: hybrid  
+    });
 
-        // Custom control for "Locate Me" button
-        L.Control.Locate = L.Control.extend({
-            onAdd: function(map) {
-                var button = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
-                button.innerHTML = '📍'; // Location icon
-                button.style.backgroundColor = 'white';
-                button.style.width = '40px';
-                button.style.height = '40px';
-                button.style.border = '2px solid gray';
-                button.style.borderRadius = '5px';
-                button.style.cursor = 'pointer';
+    // Hide loading indicator once map loads
+    map.whenReady(function() {
+        document.getElementById("map-loading").style.display = "none";
+    });
 
-                // Click event to find user location
-                button.onclick = function() {
-                    if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            function(position) {
-                                var lat = position.coords.latitude;
-                                var lng = position.coords.longitude;
-                                
-                                map.setView([lat, lng], 14);
+    // Layer control to switch between different maps
+    var baseMaps = {
+        "Streets": streets,
+        "Google Satellite": satellite,
+        "Google Terrain": terrain,
+        "Google Hybrid": hybrid,
+        "Esri World Imagery": esri,
+        "Esri Clarity": esriClarity
+    };
 
-                                // Remove old marker before adding new one
-                                if (window.marker) {
-                                    map.removeLayer(window.marker);
-                                }
+    var overlayMaps = {
+        "Place Names & Boundaries": esriLabels
+    };
 
-                                window.marker = L.marker([lat, lng]).addTo(map)
-                                    .bindPopup("Your Current Location").openPopup();
+    L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-                                document.getElementById("latitude").value = lat;
-                                document.getElementById("longitude").value = lng;
-                            },
-                            function(error) {
-                                alert("Failed to get location. Ensure GPS is enabled.");
-                            },
-                            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                        );
-                    } else {
-                        alert("Geolocation is not supported by your browser.");
-                    }
-                };
+    // Custom control for "Locate Me" button with modern styling
+    L.Control.Locate = L.Control.extend({
+        onAdd: function(map) {
+            var button = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
+            button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/><line x1="12" y1="8" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="16"/><line x1="8" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="16" y2="12"/></svg>';
+            button.style.backgroundColor = 'white';
+            button.style.width = '34px';
+            button.style.height = '34px';
+            button.style.border = 'none';
+            button.style.borderRadius = '4px';
+            button.style.cursor = 'pointer';
+            button.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+            button.style.display = 'flex';
+            button.style.alignItems = 'center';
+            button.style.justifyContent = 'center';
+            button.title = "Find my location";
 
-                return button;
-            },
+            // Hover effect
+            button.onmouseover = function() {
+                this.style.backgroundColor = '#f8f9fa';
+            };
+            button.onmouseout = function() {
+                this.style.backgroundColor = 'white';
+            };
 
-            onRemove: function(map) {
-                // Nothing needed here
-            }
-        });
+            // Click event to find user location
+            button.onclick = function() {
+                // Show loading indicator on button
+                const originalHTML = this.innerHTML;
+                this.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+                this.disabled = true;
+                
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            var lat = position.coords.latitude;
+                            var lng = position.coords.longitude;
+                            
+                            map.setView([lat, lng], 16);
 
-        // Add Locate Me button to the map
-        L.control.locate = function(opts) {
-            return new L.Control.Locate(opts);
-        };
+                            // Remove old marker before adding new one
+                            if (window.marker) {
+                                map.removeLayer(window.marker);
+                            }
 
-        L.control.locate({ position: 'topright' }).addTo(map);
+                            // Custom marker with pulse effect
+                            var pulseIcon = L.divIcon({
+                                className: 'pulse-icon',
+                                html: '<div class="pulse-inner"></div>',
+                                iconSize: [20, 20]
+                            });
 
-    
+                            window.marker = L.marker([lat, lng], {
+                                icon: L.divIcon({
+                                    className: 'my-custom-pin',
+                                    html: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#1e6f5c" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>',
+                                    iconSize: [40, 40],
+                                    iconAnchor: [12, 24],
+                                    popupAnchor: [0, -20]
+                                })
+                            }).addTo(map)
+                                .bindPopup("<b>Your Current Location</b>").openPopup();
 
-   
-    
+                            document.getElementById("latitude").value = lat;
+                            document.getElementById("longitude").value = lng;
+                            
+                            // Fetch village & pincode based on selected location
+                            fetchLocationDetails(lat, lng);
+                            
+                            // Reset button
+                            button.innerHTML = originalHTML;
+                            button.disabled = false;
+                        },
+                        function(error) {
+                            // Reset button first
+                            button.innerHTML = originalHTML;
+                            button.disabled = false;
+                            
+                            // Show error with custom styling
+                            let errorMsg = "Failed to get location. ";
+                            switch (error.code) {
+                                case error.PERMISSION_DENIED:
+                                    errorMsg += "Please enable location services.";
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    errorMsg += "Location information is unavailable.";
+                                    break;
+                                case error.TIMEOUT:
+                                    errorMsg += "Location request timed out.";
+                                    break;
+                                default:
+                                    errorMsg += "An unknown error occurred.";
+                            }
+                            
+                            const errorToast = document.createElement('div');
+                            errorToast.className = 'alert alert-danger position-fixed bottom-0 start-50 translate-middle-x mb-4 shadow';
+                            errorToast.style.zIndex = 2000;
+                            errorToast.style.maxWidth = '90%';
+                            errorToast.style.width = '400px';
+                            errorToast.innerHTML = `<div class="d-flex align-items-center"><i data-lucide="alert-circle" class="me-2"></i> ${errorMsg}</div>`;
+                            document.body.appendChild(errorToast);
+                            
+                            // Initialize icon in the error message
+                            lucide.createIcons();
+                            
+                            // Remove after 5 seconds
+                            setTimeout(() => {
+                                errorToast.remove();
+                            }, 5000);
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } else {
+                    alert("Geolocation is not supported by your browser.");
+                    button.innerHTML = originalHTML;
+                    button.disabled = false;
+                }
+            };
 
-    
-    
+            return button;
+        },
+
+        onRemove: function(map) {
+            // Nothing needed here
+        }
+    });
+
+    // Add Locate Me button to the map
+    L.control.locate = function(opts) {
+        return new L.Control.Locate(opts);
+    };
+
+    L.control.locate({ position: 'topright' }).addTo(map);
+
     window.marker = null;
     console.log("Map initialized");
     
@@ -394,7 +578,6 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     });
 });
-
 document.addEventListener("DOMContentLoaded", function () {
     const farmerForm = document.getElementById("farmerForm");
     const messageDiv = document.getElementById("message");
@@ -461,5 +644,4 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
-
 {% endblock %}

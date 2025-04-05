@@ -3,6 +3,7 @@
 {% block content %}
 <div class="container mt-4">
     <h2 class="mb-3 text-primary">Upload Media for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
+    
     <!-- Success/Error Message Placeholder -->
     <div id="message"></div>
     {% if error %}
@@ -10,131 +11,238 @@
         {{ error }}
     </div>
     {% endif %}
-
+    
     <!-- Media Upload Form -->
     <form id="mediaUploadForm" method="post" enctype="multipart/form-data" class="card p-4 shadow">
         {% csrf_token %}
         
-        <!-- Picture -->
-        <div class="mb-3">
-            <label class="form-label">Farmer's Picture (Capture or Upload)</label>
-            <input type="file" id="farmerPicture" name="picture" accept="image/*"  class="form-control">
+        <div class="row mb-4">
+            <!-- Farmer's Picture -->
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Farmer's Picture</label>
+                <div class="input-group">
+                    <input type="file" id="farmerPicture" name="picture" accept="image/*" class="form-control" onchange="previewImage(this, 'farmerPicturePreview')">
+                    <button class="btn btn-outline-secondary" type="button" onclick="activateCamera('farmerPicture')">
+                        <i data-lucide="camera" size="18"></i>
+                    </button>
+                </div>
+                <div class="mt-2 preview-container" style="height: 150px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 6px; overflow: hidden;">
+                    <img id="farmerPicturePreview" src="#" alt="Preview" style="max-height: 140px; max-width: 100%; object-fit: contain; display: none;">
+                    <span class="preview-placeholder">Preview will appear here</span>
+                </div>
+            </div>
+            
+            <!-- ID Information -->
+            <div class="col-md-6 mb-3">
+                <label class="form-label">ID Card Type</label>
+                <select id="idType" name="id_type" class="form-select mb-3" onchange="toggleExpiryDate()">
+                    <option value="">-- Select ID Type --</option>
+                    <option value="aadhar">Aadhar Card</option>
+                    <option value="driving_licence">Driving License</option>
+                    <option value="voter_id">Voter ID</option>
+                    <option value="pan_card">PAN Card</option>
+                </select>
+                
+                <label class="form-label">ID Number</label>
+                <input type="text" id="idNumber" name="id_number" class="form-control mb-3" placeholder="Enter ID Number">
+                
+                <div id="expiryDateField" style="display: none;">
+                    <label class="form-label">Expiry Date</label>
+                    <input type="date" id="idExpiryDate" name="id_expiry_date" class="form-control">
+                </div>
+            </div>
         </div>
-
-        <!-- Photo of English EPIC -->
-        <div class="mb-3">
-            <label class="form-label">Photo of English EPIC</label>
-            <input type="file" id="photoOfEnglishEpic" name="photo_of_english_epic" accept="image/*"  class="form-control">
+        
+        <!-- ID Proof Images -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">ID Card Front</label>
+                <div class="input-group">
+                    <input type="file" id="idProofFront" name="id_proof_front" accept="image/*" class="form-control" onchange="previewImage(this, 'idProofFrontPreview')">
+                    <button class="btn btn-outline-secondary" type="button" onclick="activateCamera('idProofFront')">
+                        <i data-lucide="camera" size="18"></i>
+                    </button>
+                </div>
+                <div class="mt-2 preview-container" style="height: 150px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 6px; overflow: hidden;">
+                    <img id="idProofFrontPreview" src="#" alt="Preview" style="max-height: 140px; max-width: 100%; object-fit: contain; display: none;">
+                    <span class="preview-placeholder">Preview will appear here</span>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <label class="form-label">ID Card Back</label>
+                <div class="input-group">
+                    <input type="file" id="idProofBack" name="id_proof_back" accept="image/*" class="form-control" onchange="previewImage(this, 'idProofBackPreview')">
+                    <button class="btn btn-outline-secondary" type="button" onclick="activateCamera('idProofBack')">
+                        <i data-lucide="camera" size="18"></i>
+                    </button>
+                </div>
+                <div class="mt-2 preview-container" style="height: 150px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 6px; overflow: hidden;">
+                    <img id="idProofBackPreview" src="#" alt="Preview" style="max-height: 140px; max-width: 100%; object-fit: contain; display: none;">
+                    <span class="preview-placeholder">Preview will appear here</span>
+                </div>
+            </div>
         </div>
-
-        <!-- Photo of Regional Language EPIC -->
-        <div class="mb-3">
-            <label class="form-label">Photo of Regional Language EPIC</label>
-            <input type="file" id="photoOfRegionalLanguageEpic" name="photo_of_regional_language_epic"  accept="image/*" class="form-control">
+        
+        <!-- EPIC Images -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Photo of English EPIC</label>
+                <div class="input-group">
+                    <input type="file" id="photoOfEnglishEpic" name="photo_of_english_epic" accept="image/*" class="form-control" onchange="previewImage(this, 'englishEpicPreview')">
+                    <button class="btn btn-outline-secondary" type="button" onclick="activateCamera('photoOfEnglishEpic')">
+                        <i data-lucide="camera" size="18"></i>
+                    </button>
+                </div>
+                <div class="mt-2 preview-container" style="height: 150px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 6px; overflow: hidden;">
+                    <img id="englishEpicPreview" src="#" alt="Preview" style="max-height: 140px; max-width: 100%; object-fit: contain; display: none;">
+                    <span class="preview-placeholder">Preview will appear here</span>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Photo of Regional Language EPIC</label>
+                <div class="input-group">
+                    <input type="file" id="photoOfRegionalLanguageEpic" name="photo_of_regional_language_epic" accept="image/*" class="form-control" onchange="previewImage(this, 'regionalEpicPreview')">
+                    <button class="btn btn-outline-secondary" type="button" onclick="activateCamera('photoOfRegionalLanguageEpic')">
+                        <i data-lucide="camera" size="18"></i>
+                    </button>
+                </div>
+                <div class="mt-2 preview-container" style="height: 150px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc; border-radius: 6px; overflow: hidden;">
+                    <img id="regionalEpicPreview" src="#" alt="Preview" style="max-height: 140px; max-width: 100%; object-fit: contain; display: none;">
+                    <span class="preview-placeholder">Preview will appear here</span>
+                </div>
+            </div>
         </div>
-
-        <!-- ID Type -->
-        <div class="mb-3">
-            <label class="form-label">ID Card Type</label>
-            <select id="idType" name="id_type" class="form-control">
-                <option value="">-- Select ID Type --</option>
-                <option value="aadhar">Aadhar Card</option>
-                <option value="driving_licence">Driving License</option>
-                <option value="voter_id">Voter ID</option>
-                <option value="pan_card">PAN Card</option>
-            </select>
-        </div>
-
-        <!-- ID Number -->
-        <div class="mb-3">
-            <label class="form-label">ID Number</label>
-            <input type="text" id="idNumber" name="id_number" class="form-control" placeholder="Enter ID Number">
-        </div>
-
-        <div class="mb-3" id="expiryDateField" style="display: none;">
-            <label class="form-label">Expiry Date</label>
-            <input type="date" id="idExpiryDate" name="id_expiry_date" class="form-control">
-        </div>
-        <!-- ID Proof -->
-        <div class="mb-3">
-            <label class="form-label">ID Card Front (Capture or Upload)</label>
-            <input type="file" id="idProofFront" name="id_proof_front" accept="image/*"  class="form-control">
-        </div>
-        <div class="mb-3">
-            <label class="form-label">ID Card Back (Capture or Upload)</label>
-            <input type="file" id="idProofBack" name="id_proof_back" accept="image/*"  class="form-control">
-        </div>
-      
-
-
+        
         <!-- Digital Signature -->
-        <div class="mb-3">
+        <div class="mb-4">
             <label class="form-label">Draw Signature</label>
-            <canvas id="signatureCanvas" width="300" height="100" style="border: 1px solid #ccc;"></canvas>
-            <button type="button" id="clearSignature" class="btn btn-sm btn-danger mt-2">Clear</button>
-            <input type="hidden" id="signatureData" name="digital_signature">
+            <div class="card p-3">
+                <div id="signatureContainer" style="position: relative;">
+                    <small class="text-muted mb-2 d-block">Sign with your finger or stylus</small>
+                    <canvas id="signatureCanvas" style="width: 100%; height: 150px; border: 1px solid #ccc; border-radius: 6px;"></canvas>
+                </div>
+                <div class="mt-2 d-flex justify-content-end">
+                    <button type="button" id="clearSignature" class="btn btn-sm btn-danger">
+                        <i data-lucide="trash-2" size="16"></i> Clear
+                    </button>
+                </div>
+                <input type="hidden" id="signatureData" name="digital_signature">
+            </div>
         </div>
-
+        
         <!-- Submit Button -->
-        <button type="submit" class="btn btn-success w-100">Upload Media</button>
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-success py-2">
+                <i data-lucide="upload-cloud" size="18"></i> Upload Media
+            </button>
+        </div>
     </form>
 </div>
-
+<script>
+    // Function to preview uploaded images
+    function previewImage(input, previewId) {
+        const preview = document.getElementById(previewId);
+        const previewContainer = preview.parentElement;
+        const placeholder = previewContainer.querySelector('.preview-placeholder');
+        
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
+            }
+            
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'block';
+        }
+    }
+    
+    // Function to activate camera
+    function activateCamera(inputId) {
+        document.getElementById(inputId).click();
+    }
+    
+    // Toggle expiry date field based on ID type
+    function toggleExpiryDate() {
+        const idType = document.getElementById('idType').value;
+        const expiryField = document.getElementById('expiryDateField');
+        
+        if (idType === 'driving_licence') {
+            expiryField.style.display = 'block';
+        } else {
+            expiryField.style.display = 'none';
+        }
+    }
+</script>
 <!-- Signature Pad Script -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         // ============== ENHANCED SIGNATURE PAD CODE ==============
         const canvas = document.getElementById("signatureCanvas");
         const ctx = canvas.getContext("2d");
-        const signatureContainer = document.createElement('div');
-        signatureContainer.style.position = 'relative';
-        canvas.parentNode.insertBefore(signatureContainer, canvas);
-        signatureContainer.appendChild(canvas);
+        const signatureStatusMsg = document.querySelector("#signatureContainer .text-muted");
         
-        // Add signature instructions
-        const instructions = document.createElement('div');
-        instructions.innerHTML = '<small class="text-muted">Sign with your finger or stylus</small>';
-        signatureContainer.insertBefore(instructions, canvas);
+        // Set canvas dimensions properly based on the container size
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth - 2; // Subtract border width
+            const containerHeight = parseInt(canvas.style.height) || 150;
+            
+            // Set the display size (CSS)
+            canvas.style.width = containerWidth + 'px';
+            canvas.style.height = containerHeight + 'px';
+            
+            // Set the actual size in memory (scaled for high DPI)
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = containerWidth * dpr;
+            canvas.height = containerHeight * dpr;
+            
+            // Scale context to match DPI
+            ctx.scale(dpr, dpr);
+            
+            // Reset the context for proper drawing
+            ctx.lineWidth = isMobile ? 3 : 2; // Slightly thicker lines on mobile
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = "#000000";
+            
+            // Draw watermark if no signature exists
+            if (!document.getElementById("signatureData").value) {
+                drawWatermark();
+            }
+        }
         
         // Add a "Sign Here" watermark for empty canvas
         function drawWatermark() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             ctx.font = "16px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#cccccc";
-            ctx.fillText("Sign Here", canvas.width / (2 * dpr), canvas.height / (2 * dpr));
+            ctx.fillText("Sign Here", canvas.width / (2 * (window.devicePixelRatio || 1)), 
+                         canvas.height / (2 * (window.devicePixelRatio || 1)));
             ctx.restore();
         }
         
-        // Adjust for high-DPI displays and properly set dimensions
-        const dpr = window.devicePixelRatio || 1;
+        // Check if user is on mobile device
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
-        // Mobile-specific styling
-        if (isMobile) {
-            // Make canvas bigger on small screens for easier signing
-            canvas.style.height = "150px";
-        }
+        // Initialize canvas size
+        resizeCanvas();
         
-        // Get the correct dimensions from CSS
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        ctx.scale(dpr, dpr);
-        
-        // Set up signature stroke style
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.strokeStyle = "#000000";
+        // Resize canvas when window changes
+        window.addEventListener('resize', resizeCanvas);
         
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
-        
-        // Draw watermark initially
-        drawWatermark();
         
         // Prevent scrolling when touching the canvas on mobile
         canvas.addEventListener('touchstart', function(e) {
@@ -153,6 +261,7 @@
         function startDrawing(e) {
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
             
             // Clear watermark on first draw
             if (document.getElementById("signatureData").value === "") {
@@ -169,11 +278,11 @@
                 clientY = e.clientY;
             }
             
-            lastX = (clientX - rect.left) * (canvas.width / rect.width);
-            lastY = (clientY - rect.top) * (canvas.height / rect.height);
+            lastX = (clientX - rect.left) * (canvas.width / rect.width / dpr);
+            lastY = (clientY - rect.top) * (canvas.height / rect.height / dpr);
             
             ctx.beginPath();
-            ctx.moveTo(lastX / dpr, lastY / dpr);
+            ctx.moveTo(lastX, lastY);
         }
         
         // Continue drawing
@@ -181,6 +290,8 @@
             if (!isDrawing) return;
             
             const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            
             let clientX, clientY;
             if (e.type === 'touchstart' || e.type === 'touchmove') {
                 clientX = e.touches[0].clientX;
@@ -190,12 +301,12 @@
                 clientY = e.clientY;
             }
             
-            const currentX = (clientX - rect.left) * (canvas.width / rect.width);
-            const currentY = (clientY - rect.top) * (canvas.height / rect.height);
+            const currentX = (clientX - rect.left) * (canvas.width / rect.width / dpr);
+            const currentY = (clientY - rect.top) * (canvas.height / rect.height / dpr);
             
             ctx.beginPath();
-            ctx.moveTo(lastX / dpr, lastY / dpr);
-            ctx.lineTo(currentX / dpr, currentY / dpr);
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
             ctx.stroke();
             
             lastX = currentX;
@@ -213,50 +324,45 @@
                 document.getElementById("signatureData").value = signatureData;
                 
                 // Add visual feedback that signature was saved
-                instructions.innerHTML = '<small class="text-success">✓ Signature saved</small>';
+                signatureStatusMsg.className = "text-success mb-2 d-block";
+                signatureStatusMsg.textContent = "✓ Signature saved";
                 setTimeout(() => {
-                    instructions.innerHTML = '<small class="text-muted">Sign with your finger or stylus</small>';
+                    signatureStatusMsg.className = "text-muted mb-2 d-block";
+                    signatureStatusMsg.textContent = "Sign with your finger or stylus";
                 }, 1500);
             }
         }
         
         // Handle touch events for mobile
-        canvas.addEventListener("touchstart", startDrawing, false);
-        canvas.addEventListener("touchmove", draw, false);
-        canvas.addEventListener("touchend", stopDrawing, false);
+        canvas.addEventListener("touchstart", startDrawing);
+        canvas.addEventListener("touchmove", draw);
+        canvas.addEventListener("touchend", stopDrawing);
         
         // Handle mouse events for desktop
-        canvas.addEventListener("mousedown", startDrawing, false);
-        canvas.addEventListener("mousemove", draw, false);
-        canvas.addEventListener("mouseup", stopDrawing, false);
-        canvas.addEventListener("mouseout", stopDrawing, false);
+        canvas.addEventListener("mousedown", startDrawing);
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("mouseup", stopDrawing);
+        canvas.addEventListener("mouseout", stopDrawing);
         
         // Clear button functionality
         document.getElementById("clearSignature").addEventListener("click", function () {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.getElementById("signatureData").value = "";
             drawWatermark();
-            instructions.innerHTML = '<small class="text-muted">Sign with your finger or stylus</small>';
+            signatureStatusMsg.className = "text-muted mb-2 d-block";
+            signatureStatusMsg.textContent = "Sign with your finger or stylus";
         });
 
-         // ============== REST OF YOUR SCRIPT FOLLOWS ==============
-        const idTypeSelect = document.getElementById("idType");
-        const expiryDateField = document.getElementById("expiryDateField");
-
-        // Add event listener to the ID type dropdown
-        idTypeSelect.addEventListener("change", function () {
-            if (this.value === "driving_licence") {
-                // Show expiry date field for Driving License
-                expiryDateField.style.display = "block";
-            } else {
-                // Hide expiry date field for other ID types
-                expiryDateField.style.display = "none";
-            }
-        });
-        
         // ============== REST OF YOUR SCRIPT FOLLOWS ==============
-        // Image compression function
+
+        // ============== FIXED IMAGE COMPRESSION FUNCTION ==============
         function compressImage(file, quality, maxWidth, callback) {
+            // Check if file exists and is an image
+            if (!file || !file.type.startsWith('image/')) {
+                callback(file); // Return original file if not an image
+                return;
+            }
+            
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(event) {
@@ -282,45 +388,76 @@
                     
                     // Convert to Blob
                     canvas.toBlob(function(blob) {
-                        // Create new File object
-                        const compressedFile = new File([blob], file.name, {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        });
-                        callback(compressedFile);
+                        if (blob) {
+                            // Create new File object
+                            const compressedFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            
+                            // Update compression status
+                            console.log(`Compressed ${file.name}: ${Math.round(file.size/1024)}KB → ${Math.round(compressedFile.size/1024)}KB`);
+                            
+                            callback(compressedFile);
+                        } else {
+                            // Fall back to original file if compression fails
+                            console.log(`Compression failed for ${file.name}, using original`);
+                            callback(file);
+                        }
                     }, 'image/jpeg', quality);
                 };
+                
+                // Handle image loading errors
+                img.onerror = function() {
+                    console.log(`Failed to load image ${file.name}, using original`);
+                    callback(file);
+                };
+            };
+            
+            // Handle file reading errors
+            reader.onerror = function() {
+                console.log(`Failed to read file ${file.name}, using original`);
+                callback(file);
             };
         }
-    
+        
         // Add compression to all image inputs
         const imageInputs = document.querySelectorAll('input[type="file"][accept*="image"]');
         
         imageInputs.forEach(input => {
-            input.addEventListener('change', function(e) {
-                const file = e.target.files[0];
+            const originalOnChange = input.onchange;
+            
+            input.onchange = function(e) {
+                const file = this.files[0];
                 if (!file) return;
                 
                 // Skip if not an image
-                if (!file.type.startsWith('image/')) return;
+                if (!file.type.startsWith('image/')) {
+                    if (originalOnChange) originalOnChange.call(this, e);
+                    return;
+                }
                 
-                // Show loading indicator for this input
-                const label = this.previousElementSibling;
-                const originalLabelText = label.textContent;
-                label.textContent = `${originalLabelText} (Compressing...)`;
+                // Store input reference for later
+                const fileInput = this;
+                const inputId = fileInput.id;
+                const previewId = inputId + 'Preview';
                 
+                // Show compression indicator
+                const previewContainer = document.getElementById(previewId).parentElement;
+                const placeholder = previewContainer.querySelector('.preview-placeholder');
+                placeholder.textContent = "Compressing...";
+                
+                // Apply compression
                 compressImage(file, 0.6, 1280, (compressedFile) => {
                     // Create a new file list with the compressed image
                     const dataTransfer = new DataTransfer();
                     dataTransfer.items.add(compressedFile);
-                    this.files = dataTransfer.files;
+                    fileInput.files = dataTransfer.files;
                     
-                    // Restore original label and indicate compression
-                    label.textContent = originalLabelText;
-                    
-                    console.log(`Compressed ${file.name} from ${Math.round(file.size/1024)}KB to ${Math.round(compressedFile.size/1024)}KB`);
+                    // Now update the preview
+                    previewImage(fileInput, previewId);
                 });
-            });
+            };
         });
     
         // ============== FORM SUBMISSION ==============
@@ -345,7 +482,12 @@
             document.getElementById("mediaUploadForm").style.display = "none";
             document.getElementById("message").innerHTML = `
                 <div class="alert alert-info">
-                    Uploading files, please wait...
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span>Uploading files, please wait...</span>
+                    </div>
                 </div>
             `;
     
@@ -363,7 +505,7 @@
                 if (data.success) {
                     document.getElementById("message").innerHTML = `
                         <div class="alert alert-success mt-3">
-                            <p>✅ Farmer Registration Complete Add New Farmer!</p>
+                            <p>✅ Farmer Registration Complete!</p>
                             <button id="addNewFarmerBtn" class="btn btn-primary mt-2">👨‍🌾 Add New Farmer</button>
                         </div>
                     `;

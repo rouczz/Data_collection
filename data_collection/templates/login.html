@@ -1,20 +1,59 @@
-<!-- login.html -->
-
 {% extends "data_collection/templates/base.html" %}
 
-
 {% block content %}
-<h2 class="text-primary">Login</h2>
-<form method="post">
-    {% csrf_token %}
-    <div class="mb-3">
-        <label for="id_username" class="form-label">Username</label>
-        <input type="text" name="username" id="id_username" class="form-control" required>
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i data-lucide="log-in" size="20" class="me-2"></i>
+                    Login to KisanMitra
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                {% if messages %}
+                <div class="alert alert-danger mb-4">
+                    {% for message in messages %}
+                        <p class="mb-0">{{ message }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label for="id_username" class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i data-lucide="user" size="18"></i>
+                            </span>
+                            <input type="text" name="username" id="id_username" class="form-control" 
+                                placeholder="Enter your username" required autofocus>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i data-lucide="lock" size="18"></i>
+                            </span>
+                            <input type="password" name="password" id="id_password" class="form-control" 
+                                placeholder="Enter your password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary py-2">
+                            <i data-lucide="log-in" size="18" class="me-2"></i>
+                            Login
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer bg-light text-center py-3">
+                <p class="mb-0">Don't have an account? <a href="#" class="text-decoration-none">Contact administrator</a></p>
+            </div>
+        </div>
     </div>
-    <div class="mb-3">
-        <label for="id_password" class="form-label">Password</label>
-        <input type="password" name="password" id="id_password" class="form-control" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Login</button>
-</form>
+</div>
 {% endblock %}
