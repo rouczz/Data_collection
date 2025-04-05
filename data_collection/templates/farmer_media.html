@@ -5,6 +5,12 @@
     <h2 class="mb-3 text-primary">Upload Media for {{ farmer.first_name }} {{ farmer.last_name }}</h2>
     <!-- Success/Error Message Placeholder -->
     <div id="message"></div>
+    {% if error %}
+    <div class="alert alert-danger">
+        {{ error }}
+    </div>
+    {% endif %}
+
     <!-- Media Upload Form -->
     <form id="mediaUploadForm" method="post" enctype="multipart/form-data" class="card p-4 shadow">
         {% csrf_token %}

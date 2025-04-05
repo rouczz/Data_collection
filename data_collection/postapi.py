@@ -247,8 +247,13 @@ import json
 from django.http import JsonResponse
 from django.shortcuts import render
 from .models import Farmer, Farm, Plantation, Specie, FarmerMedia
-
+from django.contrib.auth.decorators import login_required, user_passes_test
+def is_admin(user):
+    return user.is_staff
 # ✅ Dashboard View (Loads HTML Page)
+
+@login_required
+@user_passes_test(is_admin)
 def dashboard_2(request):
     return render(request, "data_collection/templates/dashboard_2.html")
 

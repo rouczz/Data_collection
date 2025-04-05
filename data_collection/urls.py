@@ -4,8 +4,12 @@ from django.conf.urls.static import static
 from .views import *
 from .postapi import *
 from .vaarha_api import *
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
+    path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('admin-dashboard/', admin_dashboard, name='admin_dashboard'),
     path('', create_farmer, name='create_farmer'),
     path('add_farm/<int:farmer_id>/', add_farm, name='add_farm'),
     path("api/farms/<int:farmer_id>/", get_farms_for_farmer, name="get_farms"),

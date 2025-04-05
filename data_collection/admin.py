@@ -1,7 +1,6 @@
 from django.contrib import admin
 from .models import Farmer, Farm, Plantation, Specie, FarmerMedia
 
-# Register your models here.
 
 @admin.register(Farmer)
 class FarmerAdmin(admin.ModelAdmin):
@@ -52,3 +51,30 @@ from .models import FarmerMedia
 class FarmerMediaAdmin(admin.ModelAdmin):
     # Dynamically get all field names from the model
     list_display = [field.name for field in FarmerMedia._meta.get_fields() if not field.is_relation]
+
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import User
+from .forms import CustomUserCreationForm
+from .models import UserProfile
+
+# Inline for UserProfile
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = "Profile"
+
+# Custom UserAdmin
+class CustomUserAdmin(UserAdmin):
+    add_form = CustomUserCreationForm
+    add_fieldsets = (
+        (None, {
+            "classes": ("wide",),
+            "fields": ("username", "email", "password1", "password2", "full_name", "address", "phone_number"),
+        }),
+    )
+    inlines = (UserProfileInline,)
+
+# Unregister the default UserAdmin and register the custom one
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)

@@ -1,6 +1,39 @@
 from django import forms
 from .models import Farmer
 import re
+
+from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+from .models import UserProfile
+
+from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
+
+class CustomUserCreationForm(UserCreationForm):
+    email = forms.EmailField(required=True, label="Email")
+    full_name = forms.CharField(max_length=200, required=True, label="Full Name")
+    address = forms.CharField(widget=forms.Textarea, required=False, label="Address")
+    phone_number = forms.CharField(max_length=15, required=False, label="Phone Number")
+
+    class Meta:
+        model = User
+        fields = ("username", "email", "password1", "password2", "full_name", "address", "phone_number")
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+            UserProfile.objects.update_or_create(
+                user=user,
+                defaults={
+                    "full_name": self.cleaned_data["full_name"],
+                    "address": self.cleaned_data["address"],
+                    "phone_number": self.cleaned_data["phone_number"],
+                },
+            )
+        return user
+    
 class FarmerForm(forms.ModelForm):
     class Meta:
         model = Farmer

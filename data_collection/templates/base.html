@@ -50,23 +50,40 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    <!-- Create Farmer Link -->
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'create_farmer' %}">Create Farmer</a>
                     </li>
+
+                    <!-- Dashboard Link -->
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
                     </li>
+
+                    <!-- Dashboard 2 Link (Visible Only to Admin Users) -->
+                    {% if request.user.is_authenticated and request.user.is_staff %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'dashboard_2' %}">Dashboard  Second</a>
+                        <a class="nav-link" href="{% url 'dashboard_2' %}">Dashboard Second</a>
+                        <a class="nav-link" href="{% url 'admin_dashboard' %}"> Admin Dashboard </a>
                     </li>
+                    {% endif %}
+
+                    <!-- Login/Logout Buttons -->
+                    {% if request.user.is_authenticated %}
+                    <!-- Logout Button (Red Color) -->
                     <li class="nav-item">
-                        <a class="nav-link" href="#">About Us</a>
+                        <a class="nav-link text-danger" href="{% url 'logout' %}">Logout</a>
                     </li>
+                    {% else %}
+                    <!-- Login Button -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
-
     <!-- Main Content -->
     <div class="container mt-4">
         {% block content %}

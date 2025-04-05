@@ -4,9 +4,12 @@ from .forms import *
 from django.contrib.gis.geos import Point
 from django.contrib.gis.geos import GEOSGeometry
 from .models import *
+from django.contrib.auth.decorators import login_required, user_passes_test
 
 from django.http import JsonResponse
-
+def is_admin(user):
+    return user.is_staff
+@login_required
 def create_farmer(request):
     if request.method == 'POST':
         form = FarmerForm(request.POST, request.FILES)  # Include request.FILES
@@ -17,6 +20,7 @@ def create_farmer(request):
             farmer = form.save(commit=False)
             farmer.block_id = request.POST.get("block_id")  # Save the block_id
             farmer.geo_tag = Point(float(lng), float(lat))
+            farmer.created_by = request.user  # Link the farmer to the current user
             farmer.save()  # Save the farmer with the file
 
             # Return a JSON response for AJAX
@@ -58,7 +62,7 @@ def generate_unique_filename(base_name):
     return f"{base_name}_{timestamp}_{unique_id}.pdf"
  # Ensure these functions exist
 
-
+@login_required
 def add_farm(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
     village_name = farmer.village  # Assuming 'village' is a field in Farmer model
@@ -147,6 +151,7 @@ from .models import Farmer, Farm, Plantation
 from .forms import PlantationForm
 import json
 
+@login_required
 def add_plantation(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
     farms = Farm.objects.filter(farmer=farmer)
@@ -204,7 +209,7 @@ from django.db.models import Count
 from django.db.models import Exists, OuterRef
 
 from django.db.models import Count
-
+@login_required
 def add_specie(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
 
@@ -257,10 +262,10 @@ def dashboard(request):
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import Farmer, Farm, Plantation
-
+@login_required
 def get_farmers_list(request):
     search_query = request.GET.get("search", "").strip()  # Get search input
-    farmers = Farmer.objects.all()
+    farmers = Farmer.objects.filter(created_by=request.user)
 
     if search_query:
         farmers = farmers.filter(first_name__icontains=search_query)  # Case-insensitive search
@@ -281,7 +286,7 @@ def get_farmers_list(request):
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from .models import Farmer, Farm, Plantation, Specie
-
+@login_required
 def get_farmer_details(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
     farms = Farm.objects.filter(farmer=farmer)
@@ -636,9 +641,15 @@ def generate_pdf_from_images(front_image, back_image):
     pdf_buffer.seek(0)
     return pdf_buffer
 
-
+@login_required
 def upload_media(request, farmer_id):
     farmer = get_object_or_404(Farmer, id=farmer_id)
+    if farmer.media.exists():
+        return render(request, "data_collection/templates/farmer_media.html", {
+            "farmer": farmer,
+            "farmer_id": farmer.id,
+            "error": "Media already uploaded for this farmer."
+        })
 
     if request.method == "POST":
         try:
@@ -777,3 +788,55 @@ def proxy_google_tiles(request, layer, z, x, y):
         logger = logging.getLogger(__name__)
         logger.error(f"Tile proxy error: {str(e)}")
         return HttpResponse(status=500)
+    
+
+# views.py
+
+from django.contrib.auth.models import User
+from django.contrib.auth.forms import UserCreationForm
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+# Helper function to check if the user is an admin
+def is_admin(user):
+    return user.is_staff
+
+# Admin dashboard view
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .forms import CustomUserCreationForm
+
+# Helper function to check if the user is an admin
+def is_admin(user):
+    return user.is_staff
+
+# Admin dashboard view
+@login_required
+@user_passes_test(is_admin)  # Only admins can access this view
+def admin_dashboard(request):
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('admin_dashboard')
+    else:
+        form = CustomUserCreationForm()
+
+    users = User.objects.all()  # List all users
+    return render(request, 'data_collection/templates/admin_dashboard.html', {'form': form, 'users': users})
+# @login_required
+# @user_passes_test(is_admin)  # Only admins can access this view
+# def admin_dashboard(request):
+#     if request.method == 'POST':
+#         form = UserCreationForm(request.POST)
+#         if form.is_valid():
+#             user = form.save()
+#             user.is_staff = False  # Ensure the user is not an admin
+#             user.save()
+#             return redirect('admin_dashboard')
+#     else:
+#         form = UserCreationForm()
+
+#     users = User.objects.all()  # List all users
+#     return render(request, 'data_collection/templates/admin_dashboard.html', {'form': form, 'users': users})
