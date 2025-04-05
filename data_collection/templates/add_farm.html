@@ -9,6 +9,9 @@
         <i data-lucide="map-pin" class="me-2" size="24"></i>
         Add Farm for {{ farmer.first_name }} {{ farmer.last_name }}
       </h2>
+      <a href="{% url 'farmer_detail' farmer.id %}" class="btn btn-outline-primary">
+        <i data-lucide="chevron-left" size="18"></i> Back to Farmer
+      </a>
     </div>
     
     <!-- Alert Messages -->
@@ -177,11 +180,18 @@
             </div>
             <div class="card-footer" id="mapInfo">
               <div style="background: #e9f7f2; border-radius: 6px; padding: 0.75rem; border-left: 3px solid var(--primary-color);">
-
+                <div class="d-flex justify-content-between">
+                  <span>Calculated Area:</span>
+                  <strong id="calculatedArea">0.00 acres</strong>
+                </div>
+                <div class="d-flex justify-content-between mt-1">
+                  <span>Points Marked:</span>
+                  <strong id="pointCount">0</strong>
+                </div>
               </div>
               <div class="text-muted small mt-2">
                 <i data-lucide="info" size="16" class="me-1"></i>
-                For manual boundary, click on the map to add points. 
+                For manual boundary, click on the map to add points. For GPS boundary, walk around your field.
               </div>
             </div>
           </div>
@@ -714,96 +724,178 @@
     // AJAX Form Submission
     document.addEventListener("DOMContentLoaded", function () {
         const farmForm = document.getElementById("farmForm");
-        const messageDiv = document.getElementById("message");
-    
+        const messageContainer = document.getElementById("messageContainer");
+        const successAlert = document.getElementById("successAlert");
+        const errorAlert = document.getElementById("errorAlert");
+        const successMessage = document.getElementById("successMessage");
+        const errorMessage = document.getElementById("errorMessage");
+        
+        // Helper function to show success message
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successAlert.style.display = "block";
+            errorAlert.style.display = "none";
+            // Scroll to the message
+            messageContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Helper function to show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorAlert.style.display = "block";
+            successAlert.style.display = "none";
+            // Scroll to the message
+            messageContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
         // Function to handle form submission
         async function handleSubmit(event, action) {
             event.preventDefault();
-    
+
             // Double-check that boundary exists
             if (!document.getElementById("boundary").value) {
-                messageDiv.innerHTML = `
-                    <div class="alert alert-danger">
-                        Please draw a farm boundary on the map.
-                    </div>
-                `;
+                showError("Please draw a farm boundary on the map.");
                 return;
             }
-    
-            // Show loading message and hide the form
-            farmForm.style.display = "none";
-            messageDiv.innerHTML = `
-                <div class="alert alert-info">
-                    Uploading data, please wait...
-                </div>
-            `;
-    
+
+            // Disable submit buttons
+            const submitButtons = farmForm.querySelectorAll("button[type='submit']");
+            submitButtons.forEach(button => {
+                const originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+                button.dataset.originalText = originalText;
+            });
+
             try {
                 // Gather form data
                 const formData = new FormData(farmForm);
-    
+
                 // Send AJAX request with the farmer ID included in the URL
-                const response = await fetch("{% url 'add_farm' farmer.id %}", {
+                const response = await fetch(window.location.href, {
                     method: "POST",
                     body: formData,
                     headers: { "X-Requested-With": "XMLHttpRequest" }
                 });
-    
+
                 const data = await response.json();
-    
+
                 if (data.success) {
                     // Success message
-                    messageDiv.innerHTML = `
-                        <div class="alert alert-success mt-3">
-                            <p>✅ Farm created successfully!</p>
-                        </div>
-                    `;
-    
+                    showSuccess("Farm created successfully!");
+
                     // Perform action based on the button clicked
                     if (action === "goNext") {
-                        proceedToPlantation(data.farmer_id || {{ farmer.id }});
+                        setTimeout(() => proceedToPlantation(data.farmer_id || {{ farmer.id }}), 1000);
                     } else if (action === "addMore") {
                         // Reload the page to reflect the newly added farm
-                        location.reload();
+                        setTimeout(() => location.reload(), 1000);
                     }
                 } else {
                     // Display error message
-                    messageDiv.innerHTML = `
-                        <div class="alert alert-danger">
-                            Error: ${data.errors || "Unknown error"}
-                        </div>
-                    `;
-                    farmForm.style.display = "block"; // Re-enable the form
+                    showError(data.errors || "Unknown error occurred while saving farm data.");
+                    
+                    // Re-enable buttons
+                    submitButtons.forEach(button => {
+                        button.disabled = false;
+                        button.innerHTML = button.dataset.originalText;
+                    });
                 }
             } catch (error) {
                 console.error("Error:", error);
-                messageDiv.innerHTML = `
-                    <div class="alert alert-danger">
-                        An unexpected error occurred. Please try again.
-                    </div>
-                `;
-                farmForm.style.display = "block"; // Re-enable the form
+                showError("An unexpected error occurred. Please try again.");
+                
+                // Re-enable buttons
+                submitButtons.forEach(button => {
+                    button.disabled = false;
+                    button.innerHTML = button.dataset.originalText;
+                });
             }
         }
-    
+
         // Attach event listeners for both buttons
         document.getElementById("submitAndGoNext").addEventListener("click", function (event) {
             handleSubmit(event, "goNext");
         });
-    
+
         document.getElementById("submitAndAddMore").addEventListener("click", function (event) {
             handleSubmit(event, "addMore");
         });
-    
+
         // Function to proceed to plantation
         function proceedToPlantation(farmerId) {
             if (!farmerId) {
-                alert("❌ Farmer ID missing! Cannot proceed to plantation.");
+                showError("Farmer ID missing! Cannot proceed to plantation.");
                 return;
             }
             window.location.href = `/add-plantation/${farmerId}/`;
         }
+        
+        // Load existing farms
+        loadExistingFarms();
     });
+
+    // Function to load existing farms
+    async function loadExistingFarms() {
+        const farmsListDiv = document.getElementById("farmsList");
+        const noFarmsMessage = document.getElementById("noFarmsMessage");
+        const farmCountBadge = document.getElementById("farmCount");
+        
+        try {
+            // Get the farmer ID from the URL
+            const pathParts = window.location.pathname.split('/');
+            const farmerId = pathParts[pathParts.indexOf('add_farm') + 1];
+            
+            const response = await fetch(`/api/farms/${farmerId}/`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            
+            const data = await response.json();
+            
+            if (data.farms && data.farms.length > 0) {
+                // Update the farm count
+                farmCountBadge.textContent = data.farms.length;
+                
+                // Clear loading spinner
+                farmsListDiv.innerHTML = '';
+                
+                // Add each farm to the list
+                data.farms.forEach(farm => {
+                    const farmElement = document.createElement('div');
+                    farmElement.className = 'existing-farm';
+                    farmElement.innerHTML = `
+                        <div class="farm-info">
+                            <h6 class="mb-1">${farm.farm_name}</h6>
+                            <div class="text-muted small">${farm.area_in_acres} acres • ${farm.ownership}</div>
+                        </div>
+                        <div class="farm-actions">
+                            <a href="/view-farm/${farm.id}/" class="btn btn-sm btn-outline-primary">
+                                <i data-lucide="eye" size="16"></i>
+                            </a>
+                        </div>
+                    `;
+                    farmsListDiv.appendChild(farmElement);
+                });
+                
+                // Initialize icons in the dynamically added content
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } else {
+                // Show no farms message
+                farmsListDiv.style.display = 'none';
+                noFarmsMessage.style.display = 'block';
+                farmCountBadge.textContent = '0';
+            }
+        } catch (error) {
+            console.error("Error loading farms:", error);
+            farmsListDiv.innerHTML = `
+                <div class="alert alert-danger m-3">
+                    Failed to load existing farms. Please refresh the page.
+                </div>
+            `;
+        }
+    }
 </script>
 
 {% endblock %}
