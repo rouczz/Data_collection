@@ -9,9 +9,6 @@
         <i data-lucide="map-pin" class="me-2" size="24"></i>
         Add Farm for {{ farmer.first_name }} {{ farmer.last_name }}
       </h2>
-      <a href="{% url 'farmer_detail' farmer.id %}" class="btn btn-outline-primary">
-        <i data-lucide="chevron-left" size="18"></i> Back to Farmer
-      </a>
     </div>
     
     <!-- Alert Messages -->
@@ -180,18 +177,11 @@
             </div>
             <div class="card-footer" id="mapInfo">
               <div style="background: #e9f7f2; border-radius: 6px; padding: 0.75rem; border-left: 3px solid var(--primary-color);">
-                <div class="d-flex justify-content-between">
-                  <span>Calculated Area:</span>
-                  <strong id="calculatedArea">0.00 acres</strong>
-                </div>
-                <div class="d-flex justify-content-between mt-1">
-                  <span>Points Marked:</span>
-                  <strong id="pointCount">0</strong>
-                </div>
+
               </div>
               <div class="text-muted small mt-2">
                 <i data-lucide="info" size="16" class="me-1"></i>
-                For manual boundary, click on the map to add points. For GPS boundary, walk around your field.
+                For manual boundary, click on the map to add points. 
               </div>
             </div>
           </div>
